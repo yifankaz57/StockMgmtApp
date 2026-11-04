@@ -8,6 +8,8 @@ import { ErrorText, Page, Section } from '@/components/ui'
 import { createProduct, getProduct, updateProduct } from '@/db/database'
 import { feedback } from '@/lib/feedback'
 import { goBack } from '@/router'
+import { shareAfterSave } from '@/shared-master/api'
+import { SharedCandidates } from '@/shared-master/SharedCandidates'
 
 function Field({ label, ...props }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -80,6 +82,12 @@ export function ProductEditPage({ editingId, initialBarcode }: { editingId: numb
       if (editingId === null) await createProduct(input, initial)
       else await updateProduct(editingId, input)
       feedback.success()
+      // 端末への保存が済んでから共有マスタへ提案する（失敗しても端末の保存はそのまま）
+      try {
+        await shareAfterSave(barcode, name, manufacturer)
+      } catch (e) {
+        alert(`商品は保存しました。共有マスタへの登録はできませんでした。\n${errorMessage(e)}`)
+      }
       goBack('/products')
     } catch (e) {
       feedback.error()
@@ -146,6 +154,14 @@ export function ProductEditPage({ editingId, initialBarcode }: { editingId: numb
           </div>
         </Section>
 
+        <SharedCandidates
+          barcode={barcode}
+          currentName={name}
+          onSelect={(n, m) => {
+            setName(n)
+            if (m) setManufacturer(m)
+          }}
+        />
         <ProductSuggestions
           barcode={barcode}
           autoSearch={editingId === null}

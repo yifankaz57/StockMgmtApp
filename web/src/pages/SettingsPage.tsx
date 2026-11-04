@@ -4,6 +4,7 @@ import { errorMessage, formatUsagePeriod, usagePeriod } from '@shared/inventory'
 import { Page, Section } from '@/components/ui'
 import { getUsageResetDay, setUsageResetDay } from '@/db/database'
 import { useDataVersion } from '@/db/events'
+import { SharedMasterSettings } from '@/shared-master/SettingsSection'
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
 
@@ -52,6 +53,7 @@ export function SettingsPage() {
           </div>
         ) : null}
       </Section>
+      <SharedMasterSettings />
     </Page>
   )
 }
