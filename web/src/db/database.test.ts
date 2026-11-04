@@ -128,14 +128,16 @@ describe('IndexedDB リポジトリ', () => {
     expect(legacy.available).toBe(true)
   })
 
-  it('消費量の集計は「利用」だけ、指定時刻以降だけ', async () => {
+  it('消費量の集計は「利用」と「出庫」、指定時刻以降だけ', async () => {
     const a = await createProduct(input('111', 'A'), 10)
     const b = await createProduct(input('222', 'B'), 10)
     await applyStockChange(a.id, 'use', 1)
     await applyStockChange(b.id, 'use', 1)
     await applyStockChange(b.id, 'use', 1)
     await applyStockChange(a.id, 'stockOut', 5)
-    expect([...(await usageTotals(null))].sort()).toEqual([[a.id, 1], [b.id, 2]])
+    await applyStockChange(b.id, 'stockIn', 3)
+    await applyStockChange(b.id, 'adjustment', 4)
+    expect([...(await usageTotals(null))].sort()).toEqual([[a.id, 6], [b.id, 2]])
     expect((await usageTotals(new Date(Date.now() + 60_000).toISOString())).size).toBe(0)
   })
 

@@ -234,7 +234,7 @@ export function startOfLocalDayIso(now: Date = new Date()): string {
   return start.toISOString();
 }
 
-// ---------- 消費量（「利用」で減らした個数） ----------
+// ---------- 消費量（スキャンでの消費「利用」と手動の「出庫」で減らした個数） ----------
 
 /** 消費量を数え直す日（毎月何日か）の既定値 */
 export const DEFAULT_USAGE_RESET_DAY = 1;
@@ -269,14 +269,17 @@ export function formatUsagePeriod(period: { start: Date; end: Date }): string {
   return `${md(period.start)}〜${md(last)}`;
 }
 
-/** 商品ごとの消費量（kind = 'use' の減少数の合計）。sinceIso 以降だけを数える（null なら全期間） */
+/** 消費量に数える操作（スキャンでの消費と手動の出庫。棚卸での増減は含めない） */
+export const CONSUMPTION_KINDS: readonly TransactionKind[] = ['use', 'stockOut'];
+
+/** 商品ごとの消費量（利用・出庫の減少数の合計）。sinceIso 以降だけを数える（null なら全期間） */
 export function sumUsageByProduct(
   transactions: Pick<StockTransaction, 'productId' | 'kind' | 'delta' | 'createdAt'>[],
   sinceIso: string | null,
 ): Map<number, number> {
   const totals = new Map<number, number>();
   for (const t of transactions) {
-    if (t.kind !== 'use' || (sinceIso !== null && t.createdAt < sinceIso)) continue;
+    if (!CONSUMPTION_KINDS.includes(t.kind) || (sinceIso !== null && t.createdAt < sinceIso)) continue;
     totals.set(t.productId, (totals.get(t.productId) ?? 0) - t.delta);
   }
   return totals;

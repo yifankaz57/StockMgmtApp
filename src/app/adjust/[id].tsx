@@ -159,7 +159,10 @@ export default function AdjustScreen() {
             <Row>
               {STEPS.map((s) => (
                 <Pressable key={s} onPress={() => step(s)} style={({ pressed }) => [styles.stepButton, pressed && { opacity: 0.6 }]}>
-                  <Text style={styles.stepText}>+{s}</Text>
+                  <Text style={styles.stepText}>
+                    {kind === 'stockOut' ? '−' : '+'}
+                    {s}
+                  </Text>
                 </Pressable>
               ))}
             </Row>

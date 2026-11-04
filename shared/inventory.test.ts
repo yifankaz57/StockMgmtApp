@@ -198,12 +198,12 @@ describe('消費量の集計と並べ替え', () => {
     tx(3, 'stockIn', 10, '2026-11-03T00:00:00.000Z'),
   ];
 
-  it('「利用」だけを数え、出庫・入庫は含めない', () => {
-    assert.deepEqual([...sumUsageByProduct(transactions, null)].sort(), [[1, 2], [2, 3]]);
+  it('「利用」と手動の「出庫」を数え、入庫は含めない', () => {
+    assert.deepEqual([...sumUsageByProduct(transactions, null)].sort(), [[1, 7], [2, 3]]);
   });
 
   it('期間の開始以降だけを数える', () => {
-    assert.deepEqual([...sumUsageByProduct(transactions, '2026-11-02T00:00:00.000Z')].sort(), [[1, 1], [2, 3]]);
+    assert.deepEqual([...sumUsageByProduct(transactions, '2026-11-02T00:00:00.000Z')].sort(), [[1, 6], [2, 3]]);
   });
 
   it('消費量の多い順、同数は商品名順', () => {

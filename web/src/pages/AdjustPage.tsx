@@ -133,7 +133,8 @@ export function AdjustPage({ id, initialKind }: { id: number; initialKind: strin
               <div className="steps">
                 {STEPS.map((s) => (
                   <button key={s} type="button" onClick={() => step(s)}>
-                    +{s}
+                    {kind === 'stockOut' ? '−' : '+'}
+                    {s}
                   </button>
                 ))}
               </div>
