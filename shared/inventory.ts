@@ -258,18 +258,6 @@ export function stockValue(product: Pick<Product, 'purchasePrice' | 'quantity'>)
   return product.purchasePrice === null ? null : roundPrice(product.purchasePrice * product.quantity);
 }
 
-/** 仕入れ値が登録されている商品の在庫金額の合計と、未登録の商品数 */
-export function totalStockValue(products: Pick<Product, 'purchasePrice' | 'quantity'>[]): { total: number; unpricedCount: number } {
-  let total = 0;
-  let unpricedCount = 0;
-  for (const p of products) {
-    const value = stockValue(p);
-    if (value === null) unpricedCount += 1;
-    else total += value;
-  }
-  return { total: roundPrice(total), unpricedCount };
-}
-
 export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);

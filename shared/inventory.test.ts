@@ -23,7 +23,6 @@ import {
   usagePeriod,
   stockValue,
   sumUsageByProduct,
-  totalStockValue,
 } from './inventory.ts';
 
 describe('calculateStock', () => {
@@ -131,17 +130,6 @@ describe('formatYen / stockValue', () => {
   it('在庫金額 = 仕入れ値 × 在庫数（未登録なら null）', () => {
     assert.equal(stockValue({ purchasePrice: 0.1, quantity: 3 }), 0.3);
     assert.equal(stockValue({ purchasePrice: null, quantity: 3 }), null);
-  });
-
-  it('合計は仕入れ値のある商品だけを足し、未登録の数を返す', () => {
-    assert.deepEqual(
-      totalStockValue([
-        { purchasePrice: 1000, quantity: 2 },
-        { purchasePrice: null, quantity: 5 },
-        { purchasePrice: 250, quantity: 0 },
-      ]),
-      { total: 2000, unpricedCount: 1 },
-    );
   });
 });
 
