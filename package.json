@@ -35,7 +35,7 @@
     "ios": "expo start --ios",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"shared/**/*.test.ts\""
   },
   "private": true,
   "engines": {

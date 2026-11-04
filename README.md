@@ -144,13 +144,12 @@ src/
 │   ├── database.ts           # SQLite スキーマと読み書き
 │   └── events.ts             # データ変更の通知
 ├── lib/
-│   ├── inventory.ts          # 在庫計算・入力チェック（＋テスト）
-│   ├── csv.ts                # CSV 生成（＋テスト）
-│   ├── jan.ts                # JAN 検証・候補の整形（＋テスト）
+│   ├── csv.ts / jan.ts / inventory.ts / web-search.ts  # shared/ の再エクスポート
 │   ├── product-lookup.ts     # JAN から商品名・メーカーを検索
 │   ├── share.ts              # CSV ファイルの書き出し・共有
 │   └── haptics.ts            # 触覚フィードバック
 └── constants/theme.ts        # 色
+shared/                       # Expo 版・Web 版で共有する在庫計算・CSV・JAN 処理（＋テスト）
 ```
 
 ## 今後の拡張アイデア

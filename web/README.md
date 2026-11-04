@@ -15,7 +15,7 @@ Expo 版（リポジトリ直下）と同じ機能です。
 - JAN コードからの候補表示（Open Food Facts）、Web 検索ボタン
 - 在庫少アラート、入出庫履歴、CSV 出力（UTF-8 BOM 付き）
 
-在庫計算・CSV・JAN 処理は Expo 版と同じコード（`../src/lib/`）を共有しています。
+在庫計算・CSV・JAN 処理は Expo 版と同じコード（リポジトリ直下の `shared/`）を共有しています。
 
 ## iPhone での使い方
 

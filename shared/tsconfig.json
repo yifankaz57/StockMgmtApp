@@ -1,0 +1,15 @@
+{
+  // Expo 版（リポジトリ直下）と Web 版（web/）で共有する純粋な TypeScript。
+  // どちらの依存関係にも頼らないよう、独立した tsconfig を置いている
+  // （Web 版のビルドが Expo の tsconfig を読みに行かないようにするため）
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true
+  },
+  "include": ["*.ts"]
+}

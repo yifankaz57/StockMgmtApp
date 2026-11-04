@@ -11,8 +11,8 @@ export default defineConfig({
   base,
   resolve: {
     alias: {
-      // Expo 版と共有する純粋なロジック（在庫計算・CSV・JAN）
-      '@shared': fileURLToPath(new URL('../src/lib', import.meta.url)),
+      // Expo 版と共有する純粋なロジック（在庫計算・CSV・JAN）: リポジトリ直下の shared/
+      '@shared': fileURLToPath(new URL('../shared', import.meta.url)),
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
