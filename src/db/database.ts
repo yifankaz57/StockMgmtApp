@@ -194,7 +194,9 @@ export async function createProduct(
 }
 
 export async function updateProduct(db: SQLiteDatabase, id: number, input: ProductInput): Promise<void> {
-  const data = normalizeProductInput(input);
+  const current = await getProduct(db, id);
+  if (!current) throw new InventoryError('notFound', '商品が見つかりません。');
+  const data = normalizeProductInput(input, { previousBarcode: current.barcode });
   try {
     await db.runAsync(
       `UPDATE products SET barcode = ?, name = ?, manufacturer = ?, shade = ?, volume = ?, purchase_price = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?

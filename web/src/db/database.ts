@@ -141,12 +141,12 @@ export async function createProduct(input: ProductInput, initialQuantity: number
 }
 
 export async function updateProduct(id: number, input: ProductInput): Promise<void> {
-  const data = normalizeProductInput(input)
   const db = await getDb()
   const tx = db.transaction('products', 'readwrite')
   try {
     const current = await tx.store.get(id)
     if (!current) throw new InventoryError('notFound', '商品が見つかりません。')
+    const data = normalizeProductInput(input, { previousBarcode: current.barcode })
     await tx.store.put({ ...current, ...data, updatedAt: nowIso() })
     await tx.done
   } catch (error) {

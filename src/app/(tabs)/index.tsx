@@ -10,7 +10,7 @@ import { IconButton, Segmented } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { applyStockChange, findProductByBarcode } from '@/db/database';
 import { haptics } from '@/lib/haptics';
-import { errorMessage } from '@/lib/inventory';
+import { errorMessage, IN_STORE_CODE_MESSAGE, isInStoreCode } from '@/lib/inventory';
 
 type ScanMode = 'lookup' | 'quickIn' | 'quickOut';
 
@@ -63,6 +63,11 @@ export default function ScanScreen() {
       try {
         const product = await findProductByBarcode(db, code);
         if (!product) {
+          if (isInStoreCode(code)) {
+            haptics.error();
+            showBanner(IN_STORE_CODE_MESSAGE, true);
+            return;
+          }
           haptics.warning();
           router.push({ pathname: '/product/edit', params: { barcode: code } });
           return;

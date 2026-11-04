@@ -11,7 +11,15 @@ import { UsageConfirmModal } from '@/components/usage-confirm-modal';
 import { Colors } from '@/constants/theme';
 import { applyStockChange, countUsageToday, findProductByBarcode } from '@/db/database';
 import { haptics } from '@/lib/haptics';
-import { errorMessage, formatShadeVolume, isLowStock, needsUsageConfirmation, type Product } from '@/lib/inventory';
+import {
+  errorMessage,
+  formatShadeVolume,
+  IN_STORE_CODE_MESSAGE,
+  isInStoreCode,
+  isLowStock,
+  needsUsageConfirmation,
+  type Product,
+} from '@/lib/inventory';
 
 type Result =
   | { type: 'success'; product: Product; usedToday: number }
@@ -61,6 +69,10 @@ export default function UseScreen() {
         const product = await findProductByBarcode(db, code);
         if (!product) {
           haptics.error();
+          if (isInStoreCode(code)) {
+            setResult({ type: 'error', title: '店内コードは登録できません', message: `バーコード: ${code}\n${IN_STORE_CODE_MESSAGE}` });
+            return;
+          }
           setResult({
             type: 'error',
             title: '未登録の商品です',

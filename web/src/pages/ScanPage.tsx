@@ -1,6 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
 
-import { errorMessage, isLowStock, needsUsageConfirmation, type Product } from '@shared/inventory'
+import {
+  errorMessage,
+  IN_STORE_CODE_MESSAGE,
+  isInStoreCode,
+  isLowStock,
+  needsUsageConfirmation,
+  type Product,
+} from '@shared/inventory'
 import { Icon } from '@/components/Icon'
 import { ManualEntry } from '@/components/ManualEntry'
 import { productSubtitle } from '@/lib/display'
@@ -51,6 +58,11 @@ export function ScanPage() {
       try {
         const product = await findProductByBarcode(code)
         if (!product) {
+          if (isInStoreCode(code)) {
+            feedback.error()
+            setResult({ type: 'error', title: '店内コードは登録できません', message: `バーコード: ${code}\n${IN_STORE_CODE_MESSAGE}` })
+            return
+          }
           feedback.warning()
           navigate('/product/new', { barcode: code })
           return

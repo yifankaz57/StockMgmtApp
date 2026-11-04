@@ -1,5 +1,7 @@
 // 在庫管理のドメインロジック（UI・DB から独立した純粋関数）
 
+import { NG_WORDS } from './ng-words.ts';
+
 /** use = 単純利用モードでの使用（1個ずつ減らす。出庫とは別に集計する） */
 export type TransactionKind = 'initial' | 'stockIn' | 'stockOut' | 'adjustment' | 'use';
 
@@ -74,6 +76,10 @@ export type InventoryErrorCode =
   | 'emptyBarcode'
   | 'emptyName'
   | 'invalidPrice'
+  | 'inStoreCode'
+  | 'textTooLong'
+  | 'urlNotAllowed'
+  | 'ngWord'
   | 'notFound';
 
 export class InventoryError extends Error {
@@ -120,12 +126,69 @@ export function calculateStock(
   }
 }
 
-/** 入力値を正規化し、不正なら InventoryError を投げる */
-export function normalizeProductInput(input: ProductInput): ProductInput {
+// ---------- 入力時の機械的なチェック ----------
+
+/** 文字数の上限 */
+export const MAX_NAME_LENGTH = 100;
+export const MAX_MANUFACTURER_LENGTH = 50;
+
+/**
+ * 店内コード（インストアコード）か。
+ * 先頭が 20〜29 の13桁は、店舗が自由に付ける番号で、店が違えば同じ番号でも別の商品になる。
+ */
+export function isInStoreCode(barcode: string): boolean {
+  return /^2\d{12}$/.test(barcode.trim());
+}
+
+/** 比較用に揃える（全角→半角、大文字→小文字、空白・記号の一部を除去） */
+function foldForCheck(text: string): string {
+  return text.normalize('NFKC').toLowerCase().replace(/[\s\u3000_\-・.。、,]/g, '');
+}
+
+/** URL・ドメイン名らしき文字列を含むか（https://, www., example.com など） */
+export function containsUrl(text: string): boolean {
+  const t = text.normalize('NFKC').toLowerCase();
+  return /(https?:\/\/|www\.|[a-z0-9-]+\.(com|net|org|info|biz|xyz|top|site|online|shop|store|io|me|ly|co|jp|cn|ru)\b)/.test(t);
+}
+
+/** 含まれている NG ワード（なければ undefined） */
+export function findNgWord(text: string): string | undefined {
+  const t = foldForCheck(text);
+  return NG_WORDS.find((w) => t.includes(foldForCheck(w)));
+}
+
+/** 商品名・メーカー名の文字数・URL・NG ワードを確認し、問題があれば InventoryError を投げる */
+function checkText(label: string, value: string, maxLength: number): void {
+  if ([...value].length > maxLength) {
+    throw new InventoryError('textTooLong', `${label}は${maxLength}文字以内で入力してください（現在 ${[...value].length} 文字）。`);
+  }
+  if (containsUrl(value)) {
+    throw new InventoryError('urlNotAllowed', `${label}に URL やドメイン名は入力できません。`);
+  }
+  const ng = findNgWord(value);
+  if (ng) {
+    throw new InventoryError('ngWord', `${label}に使えない語（「${ng}」）が含まれています。`);
+  }
+}
+
+export const IN_STORE_CODE_MESSAGE =
+  '店内コード（先頭が20〜29の13桁）は登録できません。お店ごとに意味が違う番号のため、メーカーのJANコードで登録してください。';
+
+/**
+ * 入力値を正規化し、不正なら InventoryError を投げる。
+ * previousBarcode: 編集時の元のバーコード（変えていなければ店内コードでもそのまま保存できる）
+ */
+export function normalizeProductInput(input: ProductInput, options: { previousBarcode?: string } = {}): ProductInput {
   const barcode = input.barcode.trim();
   const name = input.name.trim();
   if (!barcode) throw new InventoryError('emptyBarcode', 'バーコードを入力してください。');
   if (!name) throw new InventoryError('emptyName', '商品名を入力してください。');
+  if (isInStoreCode(barcode) && barcode !== options.previousBarcode?.trim()) {
+    throw new InventoryError('inStoreCode', IN_STORE_CODE_MESSAGE);
+  }
+  checkText('商品名', name, MAX_NAME_LENGTH);
+  const manufacturer = input.manufacturer.trim();
+  checkText('メーカー', manufacturer, MAX_MANUFACTURER_LENGTH);
   const price = input.purchasePrice;
   if (price !== null && !(Number.isFinite(price) && price >= 0 && price <= MAX_PRICE)) {
     throw new InventoryError('invalidPrice', PRICE_ERROR_MESSAGE);
@@ -133,7 +196,7 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
   return {
     barcode,
     name,
-    manufacturer: input.manufacturer.trim(),
+    manufacturer,
     shade: input.shade.trim(),
     volume: input.volume.trim(),
     purchasePrice: price === null ? null : roundPrice(price),

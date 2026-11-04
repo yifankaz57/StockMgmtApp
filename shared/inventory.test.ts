@@ -10,7 +10,10 @@ import {
   isLowStock,
   needsUsageConfirmation,
   startOfLocalDayIso,
+  containsUrl,
+  findNgWord,
   formatYen,
+  isInStoreCode,
   normalizeProductInput,
   parsePrice,
   parseQuantity,
@@ -252,5 +255,55 @@ describe('消費量の集計期間（毎月のリセット日）', () => {
   it('設定値の検証', () => {
     assert.equal(normalizeResetDay(15), 15);
     for (const v of [0, 32, 1.5, '5', null, undefined]) assert.equal(normalizeResetDay(v), 1);
+  });
+});
+
+describe('入力時の機械的なチェック', () => {
+  const base = { barcode: '4901234567894', name: 'カラー剤 8-NB', manufacturer: '', shade: '', volume: '', purchasePrice: null, minQuantity: 0, location: '', note: '' };
+  const code = (fn: () => unknown) => {
+    try {
+      fn();
+      return 'ok';
+    } catch (e) {
+      return e instanceof InventoryError ? e.code : 'other';
+    }
+  };
+
+  it('店内コード（先頭20〜29の13桁）を判定', () => {
+    assert.equal(isInStoreCode('2000000000015'), true);
+    assert.equal(isInStoreCode('2912345678901'), true);
+    assert.equal(isInStoreCode('4901234567894'), false);
+    assert.equal(isInStoreCode('20123456'), false); // 8桁は対象外
+    assert.equal(isInStoreCode('ABC-2000000000015'), false);
+  });
+
+  it('新規登録では店内コードを拒否、編集でバーコードを変えていなければ許可', () => {
+    assert.equal(code(() => normalizeProductInput({ ...base, barcode: '2000000000015' })), 'inStoreCode');
+    assert.equal(code(() => normalizeProductInput({ ...base, barcode: '2000000000015' }, { previousBarcode: '2000000000015' })), 'ok');
+    assert.equal(code(() => normalizeProductInput({ ...base, barcode: '2000000000015' }, { previousBarcode: '4901234567894' })), 'inStoreCode');
+  });
+
+  it('商品名は100文字、メーカーは50文字まで（絵文字も1文字）', () => {
+    assert.equal(code(() => normalizeProductInput({ ...base, name: 'あ'.repeat(100) })), 'ok');
+    assert.equal(code(() => normalizeProductInput({ ...base, name: 'あ'.repeat(101) })), 'textTooLong');
+    assert.equal(code(() => normalizeProductInput({ ...base, name: '😀'.repeat(100) })), 'ok');
+    assert.equal(code(() => normalizeProductInput({ ...base, manufacturer: 'a'.repeat(51) })), 'textTooLong');
+  });
+
+  it('URL・ドメイン名は不可（全角も検出）。容量や色番号の「.」は誤検知しない', () => {
+    for (const t of ['https://example.com', 'www.example.jp', '詳しくは example.com へ', 'ｈｔｔｐｓ：／／ａ.ｊｐ', 'shop.co.jp']) {
+      assert.equal(containsUrl(t), true, t);
+    }
+    for (const t of ['カラー剤 8.0 80g', 'Vol.2 シャンプー 1.5L', 'No.7 トリートメント']) {
+      assert.equal(containsUrl(t), false, t);
+    }
+    assert.equal(code(() => normalizeProductInput({ ...base, name: '激安 https://spam.example' })), 'urlNotAllowed');
+  });
+
+  it('NG ワードは全角半角・大文字小文字・空白を無視して検出', () => {
+    assert.equal(findNgWord('簡単に 稼 げ る 副業'), '副業');
+    assert.equal(findNgWord('ＬＩＮＥ追加はこちら'), 'line追加');
+    assert.equal(findNgWord('カラー剤 8-NB 80g'), undefined);
+    assert.equal(code(() => normalizeProductInput({ ...base, manufacturer: '高収入バイト' })), 'ngWord');
   });
 });
