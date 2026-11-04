@@ -8,12 +8,14 @@ import { ProductDetailPage } from '@/pages/ProductDetailPage'
 import { ProductEditPage } from '@/pages/ProductEditPage'
 import { ProductsPage } from '@/pages/ProductsPage'
 import { ScanPage } from '@/pages/ScanPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { navigate, useRoute, type Route } from '@/router'
 
 const TABS: { path: string; label: string; icon: IconName }[] = [
   { path: '/scan', label: 'スキャン', icon: 'barcode' },
   { path: '/products', label: '在庫一覧', icon: 'box' },
   { path: '/history', label: '履歴', icon: 'clock' },
+  { path: '/settings', label: '設定', icon: 'settings' },
 ]
 
 function Screen({ route }: { route: Route }) {
@@ -24,6 +26,8 @@ function Screen({ route }: { route: Route }) {
       return <ProductsPage />
     case 'history':
       return <HistoryPage />
+    case 'settings':
+      return <SettingsPage />
     case 'product':
       if (second === 'new') return <ProductEditPage key={`new-${route.query.get('barcode') ?? ''}`} editingId={null} initialBarcode={route.query.get('barcode') ?? undefined} />
       if (Number.isInteger(id) && third === 'edit') return <ProductEditPage key={`edit-${id}`} editingId={id} />

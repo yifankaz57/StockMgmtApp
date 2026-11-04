@@ -9,11 +9,14 @@ import {
   DATABASE_NAME,
   deleteProduct,
   findProductByBarcode,
+  getUsageResetDay,
   getProduct,
   listProducts,
   listTransactions,
   resetDbConnection,
+  setUsageResetDay,
   updateProduct,
+  usageTotals,
 } from './database'
 
 const input = (barcode: string, name: string) => ({
@@ -121,5 +124,23 @@ describe('IndexedDB リポジトリ', () => {
     expect(legacy.name).toBe('旧商品')
     expect(legacy.quantity).toBe(4)
     expect(legacy.purchasePrice).toBeNull()
+  })
+
+  it('消費量の集計は「利用」だけ、指定時刻以降だけ', async () => {
+    const a = await createProduct(input('111', 'A'), 10)
+    const b = await createProduct(input('222', 'B'), 10)
+    await applyStockChange(a.id, 'use', 1)
+    await applyStockChange(b.id, 'use', 1)
+    await applyStockChange(b.id, 'use', 1)
+    await applyStockChange(a.id, 'stockOut', 5)
+    expect([...(await usageTotals(null))].sort()).toEqual([[a.id, 1], [b.id, 2]])
+    expect((await usageTotals(new Date(Date.now() + 60_000).toISOString())).size).toBe(0)
+  })
+
+  it('リセット日の設定（既定 1日、保存・再読み込み）', async () => {
+    expect(await getUsageResetDay()).toBe(1)
+    await setUsageResetDay(25)
+    await resetDbConnection()
+    expect(await getUsageResetDay()).toBe(25)
   })
 })

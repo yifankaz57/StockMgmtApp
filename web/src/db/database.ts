@@ -4,7 +4,9 @@ import {
   calculateStock,
   InventoryError,
   normalizeProductInput,
+  normalizeResetDay,
   startOfLocalDayIso,
+  sumUsageByProduct,
   type Product,
   type ProductInput,
   type StockTransaction,
@@ -27,10 +29,15 @@ interface StockDB extends DBSchema {
     value: StoredTransaction
     indexes: { productId: number; createdAt: string }
   }
+  /** アプリの設定（キーと値） */
+  settings: {
+    key: string
+    value: unknown
+  }
 }
 
 export const DATABASE_NAME = 'stock-scan'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let dbPromise: Promise<IDBPDatabase<StockDB>> | null = null
 
@@ -52,6 +59,10 @@ export function getDb(): Promise<IDBPDatabase<StockDB>> {
             if (cursor.value.purchasePrice === undefined) await cursor.update({ ...cursor.value, purchasePrice: null })
             cursor = await cursor.continue()
           }
+        }
+        if (oldVersion < 3) {
+          // v3: 設定
+          db.createObjectStore('settings')
         }
       },
     })
@@ -225,4 +236,30 @@ export async function countUsageToday(productId: number, now: Date = new Date())
   const since = startOfLocalDayIso(now)
   const items = await db.getAllFromIndex('transactions', 'productId', productId)
   return items.filter((t) => t.kind === 'use' && t.createdAt >= since).reduce((sum, t) => sum - t.delta, 0)
+}
+
+/** 商品ごとの消費量（「利用」の合計）。sinceIso 以降（null なら全期間） */
+export async function usageTotals(sinceIso: string | null): Promise<Map<number, number>> {
+  const db = await getDb()
+  const items =
+    sinceIso === null
+      ? await db.getAll('transactions')
+      : await db.getAllFromIndex('transactions', 'createdAt', IDBKeyRange.lowerBound(sinceIso))
+  return sumUsageByProduct(items, sinceIso)
+}
+
+// ---------- 設定 ----------
+
+const USAGE_RESET_DAY_KEY = 'usageResetDay'
+
+/** 消費量を数え直す日（毎月何日か。既定 1） */
+export async function getUsageResetDay(): Promise<number> {
+  const db = await getDb()
+  return normalizeResetDay(await db.get('settings', USAGE_RESET_DAY_KEY))
+}
+
+export async function setUsageResetDay(day: number): Promise<void> {
+  const db = await getDb()
+  await db.put('settings', normalizeResetDay(day), USAGE_RESET_DAY_KEY)
+  notifyDataChanged()
 }

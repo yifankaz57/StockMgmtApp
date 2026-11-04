@@ -231,3 +231,58 @@ export function startOfLocalDayIso(now: Date = new Date()): string {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return start.toISOString();
 }
+
+// ---------- 消費量（「利用」で減らした個数） ----------
+
+/** 消費量を数え直す日（毎月何日か）の既定値 */
+export const DEFAULT_USAGE_RESET_DAY = 1;
+
+/** 設定値を 1〜31 の整数にする（不正なら既定値） */
+export function normalizeResetDay(value: unknown): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 31 ? value : DEFAULT_USAGE_RESET_DAY;
+}
+
+/** year 年 month 月（0始まり。範囲外は前後の年に繰り越し）のリセット日。その日がない月は月末 */
+function resetDateOf(year: number, month: number, resetDay: number): Date {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(resetDay, daysInMonth));
+}
+
+/**
+ * 現在の消費量の集計期間（端末のローカル時刻）。
+ * start: 直近のリセット日の0時、end: 次のリセット日の0時（この時刻は含まない）
+ */
+export function usagePeriod(resetDay: number, now: Date = new Date()): { start: Date; end: Date } {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const thisMonth = resetDateOf(y, m, resetDay);
+  const startMonth = now >= thisMonth ? m : m - 1;
+  return { start: resetDateOf(y, startMonth, resetDay), end: resetDateOf(y, startMonth + 1, resetDay) };
+}
+
+/** 「11/1〜11/30」形式（end は含まないので前日まで） */
+export function formatUsagePeriod(period: { start: Date; end: Date }): string {
+  const last = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate() - 1);
+  const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${md(period.start)}〜${md(last)}`;
+}
+
+/** 商品ごとの消費量（kind = 'use' の減少数の合計）。sinceIso 以降だけを数える（null なら全期間） */
+export function sumUsageByProduct(
+  transactions: Pick<StockTransaction, 'productId' | 'kind' | 'delta' | 'createdAt'>[],
+  sinceIso: string | null,
+): Map<number, number> {
+  const totals = new Map<number, number>();
+  for (const t of transactions) {
+    if (t.kind !== 'use' || (sinceIso !== null && t.createdAt < sinceIso)) continue;
+    totals.set(t.productId, (totals.get(t.productId) ?? 0) - t.delta);
+  }
+  return totals;
+}
+
+/** 消費量の多い順（同数なら商品名順）に並べた新しい配列を返す */
+export function sortByUsage<T extends Pick<Product, 'id' | 'name'>>(products: T[], usage: Map<number, number>): T[] {
+  return [...products].sort(
+    (a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || a.name.localeCompare(b.name, 'ja') || a.id - b.id,
+  );
+}

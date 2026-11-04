@@ -4,7 +4,16 @@ import { KIND_ICONS, productSubtitle } from '@/lib/display'
 import { Icon } from './Icon'
 import { QuantityBadge } from './ui'
 
-export function ProductRow({ product, onClick }: { product: Product; onClick: () => void }) {
+export function ProductRow({
+  product,
+  onClick,
+  usage,
+}: {
+  product: Product
+  onClick: () => void
+  /** 消費量順のときに表示する、集計期間内の消費量 */
+  usage?: number
+}) {
   const sub = productSubtitle(product)
   return (
     <button type="button" className="list-item" onClick={onClick}>
@@ -15,6 +24,9 @@ export function ProductRow({ product, onClick }: { product: Product; onClick: ()
           {product.barcode}
           {product.location ? `　📍${product.location}` : ''}
         </div>
+        {usage !== undefined ? (
+          <div className={`item-usage${usage > 0 ? '' : ' zero'}`}>今期の消費 {usage} 個</div>
+        ) : null}
       </div>
       <QuantityBadge product={product} />
       <Icon name="chevron" className="chevron" />
