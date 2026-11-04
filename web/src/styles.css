@@ -191,6 +191,8 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .confirm .actions button { min-height: 72px; border-radius: 18px; font-size: 24px; font-weight: 800; cursor: pointer; }
 .confirm .yes { border: 0; background: #fff; color: var(--warning); }
 .confirm .no { border: 3px solid #fff; background: transparent; color: #fff; }
+.confirm.first { background: var(--tint); }
+.confirm.first .yes { color: var(--tint); }
 
 /* ---------- 在庫操作 ---------- */
 .hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 24px; }

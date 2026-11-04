@@ -1,8 +1,11 @@
-import type { Product } from '@shared/inventory'
+import { needsUsageConfirmation, type Product } from '@shared/inventory'
 import { Icon } from './Icon'
 import { productSubtitle } from '@/lib/display'
 
-/** 1日に2個目以降を使うときの大きな確認画面 */
+/**
+ * スキャンで1個消費する前の大きな確認画面。
+ * その日の1個目は落ち着いた色、同じ商品の2個目以降はオレンジの警告で出す
+ */
 export function UsageConfirm({
   product,
   usedToday,
@@ -16,18 +19,23 @@ export function UsageConfirm({
 }) {
   if (!product) return null
   const sub = productSubtitle(product)
+  const repeated = needsUsageConfirmation(usedToday)
   return (
-    <div className="confirm" role="alertdialog" aria-modal="true" aria-labelledby="usage-confirm-title">
+    <div className={`confirm${repeated ? '' : ' first'}`} role="alertdialog" aria-modal="true" aria-labelledby="usage-confirm-title">
       <div className="body">
-        <Icon name="warning" />
-        <h2 id="usage-confirm-title">本日{usedToday + 1}個目の使用です</h2>
+        <Icon name={repeated ? 'warning' : 'drop'} />
+        <h2 id="usage-confirm-title">{repeated ? `本日${usedToday + 1}個目の使用です` : '1個消費しますか？'}</h2>
         <div className="product-box">
           {sub ? <div className="detail">{sub}</div> : null}
           <div className="name">{product.name}</div>
         </div>
         <div className="msg">
-          今日すでに {usedToday} 個使っています。
-          <br />
+          {repeated ? (
+            <>
+              今日すでに {usedToday} 個使っています。
+              <br />
+            </>
+          ) : null}
           在庫から 1 個減らしてよいですか？
         </div>
         <div className="stock">
