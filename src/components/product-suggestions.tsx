@@ -122,11 +122,11 @@ export function ProductSuggestions({
         <Ionicons name="sparkles" size={14} color={Colors.tint} />
         <Text style={styles.headerText}>候補（推定）タップで入力</Text>
       </View>
-      {names.length > 0 ? (
-        <SuggestionGroup label="商品名" items={names} selected={currentName} onSelect={onSelectName} />
-      ) : null}
       {manufacturers.length > 0 ? (
         <SuggestionGroup label="メーカー" items={manufacturers} selected={currentManufacturer} onSelect={onSelectManufacturer} />
+      ) : null}
+      {names.length > 0 ? (
+        <SuggestionGroup label="商品名" items={names} selected={currentName} onSelect={onSelectName} />
       ) : null}
       <Text style={styles.source}>出典: {sources.join('、')}。内容は推定のため確認してください。</Text>
       <SourceStatusList statuses={statuses.filter((s) => s.state === 'error')} />

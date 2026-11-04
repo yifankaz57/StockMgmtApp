@@ -130,13 +130,13 @@ export default function ProductEditScreen() {
 
         <Section title="商品情報">
           <FieldRow
-            label="商品名"
-            value={name}
-            onChangeText={setName}
-            placeholder="必須"
+            label="メーカー"
+            value={manufacturer}
+            onChangeText={setManufacturer}
+            placeholder="任意"
             autoFocus={!!barcode && editingId === null}
           />
-          <FieldRow label="メーカー" value={manufacturer} onChangeText={setManufacturer} placeholder="任意" />
+          <FieldRow label="商品名" value={name} onChangeText={setName} placeholder="必須" />
           <FieldRow
             label="色番号"
             value={shade}
