@@ -24,19 +24,6 @@ export function normalizeJan(code: string): string | null {
   return null;
 }
 
-/** 通販サイトの商品名から宣伝文句などを取り除く */
-export function cleanProductName(raw: string): string {
-  return raw
-    .normalize('NFKC')
-    .replace(/【[^】]*】/g, ' ')
-    .replace(/\[[^\]]*\]/g, ' ')
-    .replace(/≪[^≫]*≫|《[^》]*》|<[^>]*>|★[^★]*★|◆[^◆]*◆/g, ' ')
-    .replace(/(送料無料|あす楽|ポイント\d+倍|即納|在庫あり|期間限定|お取り寄せ|メール便|ネコポス|代引不可)/g, ' ')
-    .replace(/[★☆◆◇■□●○※]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 export type Suggestion = {
   value: string;
   /** 何件の情報源・出品で見つかったか（多いほど確からしい） */
@@ -89,28 +76,6 @@ export function parseOpenFoodFacts(json: unknown): LookupHit[] {
   return hits.filter((h) => h.name || h.manufacturer);
 }
 
-/**
- * Yahoo!ショッピング 商品検索 API (V3) の応答を解析
- * 例: { hits: [{ name: "【送料無料】商品名", brand: { name: "ブランド" }, janCode: "49..." }] }
- */
-export function parseYahooShopping(json: unknown, jan: string): LookupHit[] {
-  const root = asRecord(json);
-  const hits = root && Array.isArray(root.hits) ? root.hits : [];
-  const result: LookupHit[] = [];
-  for (const item of hits) {
-    const hit = asRecord(item);
-    if (!hit) continue;
-    const janCode = asString(hit.janCode);
-    // JAN が明示されていて一致しないものは除外
-    if (janCode && normalizeJan(janCode) !== normalizeJan(jan)) continue;
-    const rawName = asString(hit.name);
-    const name = rawName ? cleanProductName(rawName) : undefined;
-    const manufacturer = asString(asRecord(hit.brand)?.name);
-    if (name || manufacturer) result.push({ name: name || undefined, manufacturer, source: 'Yahoo!ショッピング' });
-  }
-  return result;
-}
-
 export type ProductSuggestions = {
   names: Suggestion[];
   manufacturers: Suggestion[];
@@ -125,7 +90,7 @@ export function buildSuggestions(hits: LookupHit[]): ProductSuggestions {
   };
 }
 
-/** API のエラー応答からメッセージを取り出す（Yahoo: { Error: { Message } } など） */
+/** API のエラー応答からメッセージを取り出す（{ Error: { Message } } / { error: { message } } / 文字列） */
 export function extractApiErrorMessage(json: unknown): string | undefined {
   const root = asRecord(json);
   if (!root) return typeof json === 'string' ? asString(json)?.slice(0, 200) : undefined;
