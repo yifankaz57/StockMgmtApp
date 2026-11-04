@@ -7,7 +7,7 @@ on:
     branches: [main]
     paths:
       - 'web/**'
-      - 'src/lib/**'
+      - 'shared/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
@@ -27,8 +27,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm

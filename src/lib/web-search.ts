@@ -1,5 +1,2 @@
-/** JAN コードの完全一致検索用の Google 検索 URL */
-export function buildWebSearchUrl(code: string): string {
-  const query = `"${code.trim()}"`;
-  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-}
+// 共有ロジック（Web 版と共通）。実体は shared/web-search.ts
+export * from '../../shared/web-search';

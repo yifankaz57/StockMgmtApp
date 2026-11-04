@@ -6,7 +6,7 @@
     "module": "esnext",
     "types": ["vite/client", "vite-plugin-pwa/client"],
     "paths": {
-      "@shared/*": ["../src/lib/*"],
+      "@shared/*": ["../shared/*"],
       "@/*": ["./src/*"]
     },
     "allowArbitraryExtensions": true,
@@ -26,6 +26,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../src/lib/inventory.ts", "../src/lib/csv.ts", "../src/lib/jan.ts", "../src/lib/web-search.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": ["src", "../shared/inventory.ts", "../shared/csv.ts", "../shared/jan.ts", "../shared/web-search.ts"]
 }
