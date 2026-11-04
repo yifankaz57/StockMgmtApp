@@ -45,6 +45,14 @@ npx expo start
 > 社内ネットワークなどで接続できない場合は `npx expo start --tunnel` を試してください。
 > Windows ファイアウォールの確認ダイアログが出たら「プライベートネットワーク」を許可してください。
 
+### うまく開けないとき
+
+| 症状 | 対処 |
+| --- | --- |
+| `You're signed in to Expo Go as "…", but not signed in to Expo CLI` | PC で `npx expo login`（Google/GitHub で登録した場合は `npx expo login --sso`）を実行し、Expo Go と同じアカウントでサインイン。`npx expo whoami` で確認してから `npx expo start` し直す。サインインしたくない場合は Expo Go の Profile → Settings → Sign out でも可 |
+| QR コードを読んでも接続できない | PC と iPhone が同じ Wi-Fi か確認。だめなら `npx expo start --tunnel` |
+| Windows ファイアウォールのダイアログが出た | 「プライベートネットワーク」を許可 |
+
 ## iPhone に単体アプリとしてインストールする（EAS Build）
 
 Expo Go なしで使える正式なアプリにするには、Expo のクラウドビルド（EAS Build）を使います。Mac は不要です。
