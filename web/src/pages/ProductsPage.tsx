@@ -6,13 +6,13 @@ import {
   isLowStock,
   formatUsagePeriod,
   sortByUsage,
-  usagePeriod,
+  type PeriodUsage,
   type Product,
 } from '@shared/inventory'
 import { Icon } from '@/components/Icon'
 import { ProductRow } from '@/components/rows'
 import { EmptyState, IconButton, Page, Segmented } from '@/components/ui'
-import { getUsageResetDay, listProducts, setProductAvailable, usageTotals } from '@/db/database'
+import { getUsageResetDay, listProducts, setProductAvailable, usageByAllPeriods } from '@/db/database'
 import { useDataVersion } from '@/db/events'
 import { shareCsv, timestampForFileName } from '@/lib/share'
 import { navigate } from '@/router'
@@ -42,7 +42,8 @@ export function ProductsPage() {
   const [lowOnly, setLowOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>(loadSort)
   // 消費量順のとき: 集計期間（設定タブのリセット日から計算）と商品ごとの消費量
-  const [usage, setUsage] = useState<{ totals: Map<number, number>; periodLabel: string; resetDay: number } | null>(null)
+  // periods: 月ごとの消費量（新しい順。先頭が今期）。並べ替えには今期、CSV には全期間を使う
+  const [usage, setUsage] = useState<{ totals: Map<number, number>; periodLabel: string; resetDay: number; periods: PeriodUsage[] } | null>(null)
 
   useEffect(() => {
     try {
@@ -58,9 +59,9 @@ export function ProductsPage() {
     const request = { active: true }
     void (async () => {
       const resetDay = await getUsageResetDay()
-      const period = usagePeriod(resetDay)
-      const totals = await usageTotals(period.start.toISOString())
-      if (request.active) setUsage({ totals, periodLabel: formatUsagePeriod(period), resetDay })
+      const periods = await usageByAllPeriods(resetDay)
+      const current = periods[0]
+      if (request.active) setUsage({ totals: current.totals, periodLabel: formatUsagePeriod(current), resetDay, periods })
     })().catch((e) => alert(`読み込みエラー: ${errorMessage(e)}`))
     return () => {
       request.active = false
@@ -101,7 +102,7 @@ export function ProductsPage() {
       return
     }
     const ts = timestampForFileName()
-    void shareCsv(`在庫一覧_${ts}.csv`, productsToCsv(products, usage ? { label: usage.periodLabel, totals: usage.totals } : undefined), `zaiko_${ts}.csv`).catch((e) =>
+    void shareCsv(`在庫一覧_${ts}.csv`, productsToCsv(products, usage?.periods ?? []), `zaiko_${ts}.csv`).catch((e) =>
       alert(`CSV出力に失敗しました: ${errorMessage(e)}`),
     )
   }

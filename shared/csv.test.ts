@@ -35,15 +35,19 @@ describe('csv 出力', () => {
     assert.equal(lines[2], '');
   });
 
-  it('消費数を渡すと在庫数の右に「今月の消費数（期間）」の列が入る（なければ 0）', () => {
+  it('期間ごとの消費数の列が在庫数の右に新しい順で入る（なければ 0）', () => {
     const product = (id: number) => ({
       id, barcode: String(id), name: `商品${id}`, manufacturer: '', shade: '', volume: '', purchasePrice: null, quantity: 3, available: true,
       minQuantity: 0, location: '', note: '', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
     });
-    const lines = productsToCsv([product(1), product(2)], { label: '11/1〜11/30', totals: new Map([[1, 4]]) }).split('\r\n');
-    assert.match(lines[0], /^バーコード,メーカー,商品名,色番号,容量,利用,在庫数,今月の消費数（11\/1〜11\/30）,仕入れ値,/);
-    assert.match(lines[1], /^1,,商品1,,,可,3,4,,/);
-    assert.match(lines[2], /^2,,商品2,,,可,3,0,,/);
+    const periods = [
+      { start: new Date(2026, 10, 1), end: new Date(2026, 11, 1), totals: new Map([[1, 4]]) },
+      { start: new Date(2026, 9, 1), end: new Date(2026, 10, 1), totals: new Map([[2, 7]]) },
+    ];
+    const lines = productsToCsv([product(1), product(2)], periods).split('\r\n');
+    assert.match(lines[0], /^バーコード,メーカー,商品名,色番号,容量,利用,在庫数,消費数（2026\/11\/1〜11\/30）,消費数（2026\/10\/1〜10\/31）,仕入れ値,/);
+    assert.match(lines[1], /^1,,商品1,,,可,3,4,0,,/);
+    assert.match(lines[2], /^2,,商品2,,,可,3,0,7,,/);
   });
 
   it('仕入れ値が未登録なら仕入れ値・在庫金額は空欄', () => {

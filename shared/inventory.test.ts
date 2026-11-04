@@ -18,8 +18,10 @@ import {
   parsePrice,
   parseQuantity,
   formatUsagePeriod,
+  formatUsagePeriodWithYear,
   normalizeResetDay,
   sortByUsage,
+  usageByPeriod,
   usagePeriod,
   stockValue,
   sumUsageByProduct,
@@ -293,5 +295,39 @@ describe('入力時の機械的なチェック', () => {
     assert.equal(findNgWord('ＬＩＮＥ追加はこちら'), 'line追加');
     assert.equal(findNgWord('カラー剤 8-NB 80g'), undefined);
     assert.equal(code(() => normalizeProductInput({ ...base, manufacturer: '高収入バイト' })), 'ngWord');
+  });
+});
+
+describe('月ごとの消費量（usageByPeriod）', () => {
+  const at = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).toISOString();
+  const tx = (productId: number, kind: 'use' | 'stockOut' | 'stockIn' | 'adjustment', delta: number, createdAt: string) => ({ productId, kind, delta, createdAt });
+  const now = new Date(2026, 10, 4, 15);
+
+  it('記録のある最も古い月から今月まで、新しい順。間の月も空で含む', () => {
+    const periods = usageByPeriod(
+      [
+        tx(1, 'use', -1, at(2026, 11, 2)),
+        tx(1, 'stockOut', -3, at(2026, 11, 3)),
+        tx(2, 'use', -1, at(2026, 8, 20)),
+        tx(2, 'stockIn', 10, at(2026, 5, 1)), // 入庫は消費に含めない（期間の範囲にも影響しない）
+        tx(1, 'adjustment', -2, at(2026, 9, 1)),
+      ],
+      1,
+      now,
+    );
+    assert.deepEqual(periods.map(formatUsagePeriodWithYear), ['2026/11/1〜11/30', '2026/10/1〜10/31', '2026/9/1〜9/30', '2026/8/1〜8/31']);
+    assert.deepEqual([...periods[0].totals], [[1, 4]]);
+    assert.equal(periods[1].totals.size, 0);
+    assert.deepEqual([...periods[3].totals], [[2, 1]]);
+  });
+
+  it('記録がなければ今月だけ', () => {
+    assert.deepEqual(usageByPeriod([], 1, now).map(formatUsagePeriodWithYear), ['2026/11/1〜11/30']);
+  });
+
+  it('リセット日で区切り、年をまたぐ期間は終わりにも年を付ける', () => {
+    const periods = usageByPeriod([tx(1, 'use', -1, at(2026, 1, 10)), tx(1, 'use', -1, at(2025, 12, 20))], 15, new Date(2026, 0, 20));
+    assert.deepEqual(periods.map(formatUsagePeriodWithYear), ['2026/1/15〜2/14', '2025/12/15〜2026/1/14']);
+    assert.deepEqual([...periods[1].totals], [[1, 2]]);
   });
 });

@@ -7,6 +7,8 @@ import {
   normalizeResetDay,
   startOfLocalDayIso,
   sumUsageByProduct,
+  usageByPeriod,
+  type PeriodUsage,
   type Product,
   type ProductInput,
   type StockTransaction,
@@ -284,4 +286,10 @@ export async function setUsageResetDay(day: number): Promise<void> {
   const db = await getDb()
   await db.put('settings', normalizeResetDay(day), USAGE_RESET_DAY_KEY)
   notifyDataChanged()
+}
+
+/** 月ごとの消費量（記録のある最も古い月から今月まで。新しい順） */
+export async function usageByAllPeriods(resetDay: number, now: Date = new Date()): Promise<PeriodUsage[]> {
+  const db = await getDb()
+  return usageByPeriod(await db.getAll('transactions'), resetDay, now)
 }

@@ -342,3 +342,39 @@ export function sortByUsage<T extends Pick<Product, 'id' | 'name'>>(products: T[
     (a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || a.name.localeCompare(b.name, 'ja') || a.id - b.id,
   );
 }
+
+/** 「2026/11/1〜11/30」形式（年をまたぐときは終わりにも年を付ける） */
+export function formatUsagePeriodWithYear(period: { start: Date; end: Date }): string {
+  const last = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate() - 1);
+  const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  const endText = last.getFullYear() === period.start.getFullYear() ? md(last) : `${last.getFullYear()}/${md(last)}`;
+  return `${period.start.getFullYear()}/${md(period.start)}〜${endText}`;
+}
+
+export type PeriodUsage = { start: Date; end: Date; totals: Map<number, number> };
+
+/**
+ * 月ごと（リセット日で区切った期間ごと）の商品別消費量。
+ * 今の期間から、消費の記録がある最も古い期間まで、新しい順に返す（記録がなければ今の期間だけ）。
+ * 途中に消費のない期間があっても、その期間も空の集計として含める。
+ */
+export function usageByPeriod(
+  transactions: Pick<StockTransaction, 'productId' | 'kind' | 'delta' | 'createdAt'>[],
+  resetDay: number,
+  now: Date = new Date(),
+): PeriodUsage[] {
+  const consumed = transactions.filter((t) => CONSUMPTION_KINDS.includes(t.kind));
+  const oldest = consumed.reduce<string | null>((min, t) => (min === null || t.createdAt < min ? t.createdAt : min), null);
+  const periods: PeriodUsage[] = [];
+  let period = usagePeriod(resetDay, now);
+  for (;;) {
+    periods.push({ ...period, totals: new Map() });
+    if (oldest === null || period.start.toISOString() <= oldest) break;
+    period = usagePeriod(resetDay, new Date(period.start.getTime() - 1));
+  }
+  for (const t of consumed) {
+    const target = periods.find((p) => t.createdAt >= p.start.toISOString() && t.createdAt < p.end.toISOString());
+    if (target) target.totals.set(t.productId, (target.totals.get(t.productId) ?? 0) - t.delta);
+  }
+  return periods;
+}
