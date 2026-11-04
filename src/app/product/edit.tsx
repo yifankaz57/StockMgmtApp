@@ -12,7 +12,14 @@ import { ErrorText, FieldRow, Row, Section, styles as ui } from '@/components/ui
 import { Colors } from '@/constants/theme';
 import { createProduct, getProduct, updateProduct } from '@/db/database';
 import { haptics } from '@/lib/haptics';
-import { errorMessage, parseQuantity } from '@/lib/inventory';
+import { errorMessage, formatYen, parsePrice, parseQuantity, PRICE_ERROR_MESSAGE } from '@/lib/inventory';
+
+/** 入力中の仕入れ値の確認表示（フッターの末尾に付ける） */
+function pricePreviewText(text: string): string {
+  const v = parsePrice(text);
+  if (v === null) return '';
+  return v === undefined ? `\n⚠ ${PRICE_ERROR_MESSAGE}` : `\n入力値: ${formatYen(v)}`;
+}
 
 /**
  * 商品の登録・編集画面
@@ -30,6 +37,7 @@ export default function ProductEditScreen() {
   const [manufacturer, setManufacturer] = useState('');
   const [shade, setShade] = useState('');
   const [volume, setVolume] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
   const [location, setLocation] = useState('');
   const [initialQuantity, setInitialQuantity] = useState('0');
   const [minQuantity, setMinQuantity] = useState('0');
@@ -47,6 +55,7 @@ export default function ProductEditScreen() {
       setManufacturer(p.manufacturer);
       setShade(p.shade);
       setVolume(p.volume);
+      setPurchasePrice(p.purchasePrice === null ? '' : String(p.purchasePrice));
       setLocation(p.location);
       setMinQuantity(String(p.minQuantity));
       setNote(p.note);
@@ -63,9 +72,15 @@ export default function ProductEditScreen() {
       haptics.error();
       return;
     }
+    const price = parsePrice(purchasePrice);
+    if (price === undefined) {
+      setError(PRICE_ERROR_MESSAGE);
+      haptics.error();
+      return;
+    }
     setSaving(true);
     try {
-      const input = { barcode, name, manufacturer, shade, volume, location, note, minQuantity: min };
+      const input = { barcode, name, manufacturer, shade, volume, purchasePrice: price, location, note, minQuantity: min };
       if (editingId === null) {
         await createProduct(db, input, initial);
       } else {
@@ -147,6 +162,20 @@ export default function ProductEditScreen() {
           />
           <FieldRow label="容量" value={volume} onChangeText={setVolume} placeholder="例: 80g（任意）" autoCorrect={false} />
           <FieldRow label="保管場所" value={location} onChangeText={setLocation} placeholder="例: 棚A-3" last />
+        </Section>
+
+        <Section
+          title="仕入れ"
+          footer={`1個あたりの金額（円）。空欄なら未登録です。在庫金額の計算とCSV出力に使います。${pricePreviewText(purchasePrice)}`}>
+          <FieldRow
+            label="仕入れ値（円）"
+            value={purchasePrice}
+            onChangeText={setPurchasePrice}
+            placeholder="例: 1200（任意）"
+            keyboardType="decimal-pad"
+            selectTextOnFocus
+            last
+          />
         </Section>
 
         <Section title="在庫" footer="在庫数が最低在庫数以下になると「在庫少」として表示されます。0 の場合は警告しません。">

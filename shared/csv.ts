@@ -1,4 +1,4 @@
-import type { Product, StockTransaction } from './inventory';
+import { stockValue, type Product, type StockTransaction } from './inventory.ts';
 
 const KIND_LABELS_FOR_CSV: Record<StockTransaction['kind'], string> = {
   initial: '初期登録',
@@ -33,7 +33,7 @@ export function formatDateTime(iso: string): string {
 
 export function productsToCsv(products: Product[]): string {
   return toCsv([
-    ['バーコード', 'メーカー', '商品名', '色番号', '容量', '在庫数', '最低在庫数', '保管場所', 'メモ', '更新日時'],
+    ['バーコード', 'メーカー', '商品名', '色番号', '容量', '在庫数', '仕入れ値', '在庫金額', '最低在庫数', '保管場所', 'メモ', '更新日時'],
     ...products.map((p) => [
       p.barcode,
       p.manufacturer,
@@ -41,6 +41,8 @@ export function productsToCsv(products: Product[]): string {
       p.shade,
       p.volume,
       p.quantity,
+      p.purchasePrice ?? '',
+      stockValue(p) ?? '',
       p.minQuantity,
       p.location,
       p.note,

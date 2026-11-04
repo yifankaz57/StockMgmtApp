@@ -28,6 +28,8 @@ export type Product = {
   shade: string;
   /** 容量（例: 80g, 1000ml）。任意 */
   volume: string;
+  /** 1個あたりの仕入れ値（円）。未登録なら null */
+  purchasePrice: number | null;
   quantity: number;
   /** この数量以下で「在庫少」。0 なら警告しない */
   minQuantity: number;
@@ -56,6 +58,8 @@ export type ProductInput = {
   manufacturer: string;
   shade: string;
   volume: string;
+  /** 1個あたりの仕入れ値（円）。未登録なら null */
+  purchasePrice: number | null;
   minQuantity: number;
   location: string;
   note: string;
@@ -67,6 +71,7 @@ export type InventoryErrorCode =
   | 'duplicateBarcode'
   | 'emptyBarcode'
   | 'emptyName'
+  | 'invalidPrice'
   | 'notFound';
 
 export class InventoryError extends Error {
@@ -119,12 +124,17 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
   const name = input.name.trim();
   if (!barcode) throw new InventoryError('emptyBarcode', 'バーコードを入力してください。');
   if (!name) throw new InventoryError('emptyName', '商品名を入力してください。');
+  const price = input.purchasePrice;
+  if (price !== null && !(Number.isFinite(price) && price >= 0 && price <= MAX_PRICE)) {
+    throw new InventoryError('invalidPrice', PRICE_ERROR_MESSAGE);
+  }
   return {
     barcode,
     name,
     manufacturer: input.manufacturer.trim(),
     shade: input.shade.trim(),
     volume: input.volume.trim(),
+    purchasePrice: price === null ? null : roundPrice(price),
     minQuantity: Math.max(0, Math.floor(Number.isFinite(input.minQuantity) ? input.minQuantity : 0)),
     location: input.location.trim(),
     note: input.note.trim(),
@@ -139,6 +149,60 @@ export function parseQuantity(text: string): number | null {
   if (!/^\d+$/.test(halfWidth)) return null;
   const value = Number(halfWidth);
   return Number.isSafeInteger(value) ? value : null;
+}
+
+// ---------- 仕入れ値 ----------
+
+/** 仕入れ値の上限（入力ミス防止。1億円） */
+export const MAX_PRICE = 100_000_000;
+
+export const PRICE_ERROR_MESSAGE = '仕入れ値は0以上の数値（小数は2桁まで）で入力してください。';
+
+/** 小数第2位で丸める（浮動小数点の誤差対策） */
+function roundPrice(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * 仕入れ値の入力欄の文字列を数値に変換する。
+ * 全角数字、桁区切りのカンマ、「¥」「円」を許可する。空欄なら null（未登録）。
+ * 不正な入力なら undefined。
+ */
+export function parsePrice(text: string): number | null | undefined {
+  const normalized = text
+    .trim()
+    .replace(/[０-９．，]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/^[¥￥]\s*/, '')
+    .replace(/\s*円$/, '')
+    .replace(/,/g, '');
+  if (normalized === '') return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return undefined;
+  const value = Number(normalized);
+  return value <= MAX_PRICE ? value : undefined;
+}
+
+/** 金額を「¥1,234」形式にする（小数は必要なときだけ最大2桁） */
+export function formatYen(value: number): string {
+  const [int, frac] = roundPrice(value).toFixed(2).split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return frac === '00' ? `¥${grouped}` : `¥${grouped}.${frac.replace(/0$/, '')}`;
+}
+
+/** 在庫金額（仕入れ値 × 在庫数）。仕入れ値が未登録なら null */
+export function stockValue(product: Pick<Product, 'purchasePrice' | 'quantity'>): number | null {
+  return product.purchasePrice === null ? null : roundPrice(product.purchasePrice * product.quantity);
+}
+
+/** 仕入れ値が登録されている商品の在庫金額の合計と、未登録の商品数 */
+export function totalStockValue(products: Pick<Product, 'purchasePrice' | 'quantity'>[]): { total: number; unpricedCount: number } {
+  let total = 0;
+  let unpricedCount = 0;
+  for (const p of products) {
+    const value = stockValue(p);
+    if (value === null) unpricedCount += 1;
+    else total += value;
+  }
+  return { total: roundPrice(total), unpricedCount };
 }
 
 export function errorMessage(error: unknown): string {

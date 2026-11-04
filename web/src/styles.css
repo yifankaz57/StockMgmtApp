@@ -66,6 +66,13 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 16px; }
 .row + .row { border-top: 0.5px solid var(--border); }
 .row-label { font-size: 16px; white-space: nowrap; }
+.row-unit { font-size: 16px; color: var(--text-2); }
+.row-note { min-height: 0; padding-top: 0; justify-content: flex-end; font-size: 13px; color: var(--text-2); }
+.row + .row.row-note { border-top: 0; }
+.row-note.bad { color: var(--danger); }
+.value-summary { margin: 0 16px 10px; padding: 10px 14px; border-radius: 12px; background: var(--card); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
+.value-summary strong { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+.value-summary small { flex-basis: 100%; font-size: 11px; }
 .row-value { flex: 1; text-align: right; color: var(--text-2); font-size: 16px; word-break: break-all; user-select: text; }
 .row input, .row textarea {
   flex: 1; min-width: 0; border: 0; outline: none; background: transparent; text-align: right; color: var(--text); padding: 4px 0;

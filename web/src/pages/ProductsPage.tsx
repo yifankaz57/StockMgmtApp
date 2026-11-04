@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { productsToCsv } from '@shared/csv'
-import { errorMessage, isLowStock, type Product } from '@shared/inventory'
+import { errorMessage, formatYen, isLowStock, totalStockValue, type Product } from '@shared/inventory'
 import { Icon } from '@/components/Icon'
 import { ProductRow } from '@/components/rows'
 import { EmptyState, IconButton, Page } from '@/components/ui'
@@ -22,6 +22,7 @@ export function ProductsPage() {
       .catch((e) => alert(`読み込みエラー: ${errorMessage(e)}`))
   }, [version])
 
+  const valueSummary = useMemo(() => totalStockValue(products), [products])
   const lowCount = useMemo(() => products.filter(isLowStock).length, [products])
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -68,6 +69,13 @@ export function ProductsPage() {
         </button>
         <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{filtered.length} 件</span>
       </div>
+      {products.length > 0 && valueSummary.unpricedCount < products.length ? (
+        <div className="value-summary">
+          <span>在庫金額（仕入れ値ベース）</span>
+          <strong>{formatYen(valueSummary.total)}</strong>
+          {valueSummary.unpricedCount > 0 ? <small>仕入れ値が未登録の {valueSummary.unpricedCount} 件は含みません</small> : null}
+        </div>
+      ) : null}
       {filtered.length > 0 ? (
         <div className="list">
           {filtered.map((p) => (

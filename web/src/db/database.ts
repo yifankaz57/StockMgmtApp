@@ -30,20 +30,28 @@ interface StockDB extends DBSchema {
 }
 
 export const DATABASE_NAME = 'stock-scan'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbPromise: Promise<IDBPDatabase<StockDB>> | null = null
 
 export function getDb(): Promise<IDBPDatabase<StockDB>> {
   if (!dbPromise) {
     dbPromise = openDB<StockDB>(DATABASE_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
+      async upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           const products = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true })
           products.createIndex('barcode', 'barcode', { unique: true })
           const transactions = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true })
           transactions.createIndex('productId', 'productId')
           transactions.createIndex('createdAt', 'createdAt')
+        }
+        if (oldVersion < 2) {
+          // v2: 仕入れ値を追加（既存の商品は未登録 = null）
+          let cursor = await tx.objectStore('products').openCursor()
+          while (cursor) {
+            if (cursor.value.purchasePrice === undefined) await cursor.update({ ...cursor.value, purchasePrice: null })
+            cursor = await cursor.continue()
+          }
         }
       },
     })

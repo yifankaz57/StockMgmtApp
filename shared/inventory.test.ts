@@ -10,8 +10,12 @@ import {
   isLowStock,
   needsUsageConfirmation,
   startOfLocalDayIso,
+  formatYen,
   normalizeProductInput,
+  parsePrice,
   parseQuantity,
+  stockValue,
+  totalStockValue,
 } from './inventory.ts';
 
 describe('calculateStock', () => {
@@ -63,16 +67,73 @@ describe('normalizeProductInput', () => {
   it('前後の空白を除去し、最低在庫数を0以上の整数にする', () => {
     assert.deepEqual(
       normalizeProductInput({
-        barcode: ' 4901234567894 ', name: ' ペン ', manufacturer: ' 文具メーカー ', shade: ' 8-NB ', volume: ' 80g ', minQuantity: -2, location: ' 棚A ', note: '',
+        barcode: ' 4901234567894 ', name: ' ペン ', manufacturer: ' 文具メーカー ', shade: ' 8-NB ', volume: ' 80g ', purchasePrice: 1200.004, minQuantity: -2, location: ' 棚A ', note: '',
       }),
-      { barcode: '4901234567894', name: 'ペン', manufacturer: '文具メーカー', shade: '8-NB', volume: '80g', minQuantity: 0, location: '棚A', note: '' },
+      { barcode: '4901234567894', name: 'ペン', manufacturer: '文具メーカー', shade: '8-NB', volume: '80g', purchasePrice: 1200, minQuantity: 0, location: '棚A', note: '' },
     );
   });
 
   it('バーコード・商品名が空ならエラー', () => {
-    const base = { barcode: '1', name: 'a', manufacturer: '', shade: '', volume: '', minQuantity: 0, location: '', note: '' };
+    const base = { barcode: '1', name: 'a', manufacturer: '', shade: '', volume: '', purchasePrice: null, minQuantity: 0, location: '', note: '' };
     assert.throws(() => normalizeProductInput({ ...base, barcode: '  ' }), (e: unknown) => e instanceof InventoryError && e.code === 'emptyBarcode');
     assert.throws(() => normalizeProductInput({ ...base, name: '' }), (e: unknown) => e instanceof InventoryError && e.code === 'emptyName');
+  });
+
+  it('仕入れ値が負・非数ならエラー、null はそのまま', () => {
+    const base = { barcode: '1', name: 'a', manufacturer: '', shade: '', volume: '', purchasePrice: null, minQuantity: 0, location: '', note: '' };
+    assert.equal(normalizeProductInput(base).purchasePrice, null);
+    for (const purchasePrice of [-1, Number.NaN, Infinity]) {
+      assert.throws(() => normalizeProductInput({ ...base, purchasePrice }), (e: unknown) => e instanceof InventoryError && e.code === 'invalidPrice');
+    }
+  });
+});
+
+describe('parsePrice', () => {
+  it('空欄は null（未登録）', () => {
+    assert.equal(parsePrice(''), null);
+    assert.equal(parsePrice('  '), null);
+  });
+
+  it('半角・全角・カンマ・円記号・小数2桁まで', () => {
+    assert.equal(parsePrice('1200'), 1200);
+    assert.equal(parsePrice('１，２００'), 1200);
+    assert.equal(parsePrice('¥1,200'), 1200);
+    assert.equal(parsePrice('1200円'), 1200);
+    assert.equal(parsePrice('98.5'), 98.5);
+    assert.equal(parsePrice('0'), 0);
+  });
+
+  it('不正な入力は undefined', () => {
+    assert.equal(parsePrice('-5'), undefined);
+    assert.equal(parsePrice('abc'), undefined);
+    assert.equal(parsePrice('1.234'), undefined);
+    assert.equal(parsePrice('1e3'), undefined);
+    assert.equal(parsePrice('100000001'), undefined);
+  });
+});
+
+describe('formatYen / stockValue', () => {
+  it('3桁区切り、小数は必要なときだけ', () => {
+    assert.equal(formatYen(0), '¥0');
+    assert.equal(formatYen(1234567), '¥1,234,567');
+    assert.equal(formatYen(98.5), '¥98.5');
+    assert.equal(formatYen(98.25), '¥98.25');
+  });
+
+  it('在庫金額 = 仕入れ値 × 在庫数（未登録なら null）', () => {
+    assert.equal(stockValue({ purchasePrice: 0.1, quantity: 3 }), 0.3);
+    assert.equal(stockValue({ purchasePrice: null, quantity: 3 }), null);
+  });
+
+  it('合計は仕入れ値のある商品だけを足し、未登録の数を返す', () => {
+    assert.deepEqual(
+      totalStockValue([
+        { purchasePrice: 1000, quantity: 2 },
+        { purchasePrice: null, quantity: 5 },
+        { purchasePrice: 250, quantity: 0 },
+      ]),
+      { total: 2000, unpricedCount: 1 },
+    );
   });
 });
 

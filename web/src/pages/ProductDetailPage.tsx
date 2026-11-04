@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 
 import { formatDateTime } from '@shared/csv'
-import { errorMessage, isLowStock, KIND_LABELS, SELECTABLE_KINDS, type Product, type StockTransaction } from '@shared/inventory'
+import {
+  errorMessage,
+  formatYen,
+  isLowStock,
+  KIND_LABELS,
+  SELECTABLE_KINDS,
+  stockValue,
+  type Product,
+  type StockTransaction,
+} from '@shared/inventory'
 import { Icon } from '@/components/Icon'
 import { TransactionRow } from '@/components/rows'
 import { KIND_ICONS } from '@/lib/display'
@@ -54,6 +63,7 @@ export function ProductDetailPage({ id }: { id: number }) {
   }
 
   const low = isLowStock(product)
+  const value = stockValue(product)
 
   const remove = async () => {
     if (!window.confirm(`「${product.name}」を削除しますか？\n入出庫履歴もすべて削除されます。この操作は取り消せません。`)) return
@@ -95,6 +105,8 @@ export function ProductDetailPage({ id }: { id: number }) {
         {product.shade ? <InfoRow label="色番号" value={product.shade} /> : null}
         {product.volume ? <InfoRow label="容量" value={product.volume} /> : null}
         {product.location ? <InfoRow label="保管場所" value={product.location} /> : null}
+        <InfoRow label="仕入れ値" value={product.purchasePrice === null ? '未登録' : formatYen(product.purchasePrice)} />
+        {value !== null ? <InfoRow label="在庫金額" value={formatYen(value)} /> : null}
         <InfoRow label="最低在庫数" value={product.minQuantity} />
         <InfoRow label="登録日時" value={formatDateTime(product.createdAt).slice(0, 16)} />
         <InfoRow label="更新日時" value={formatDateTime(product.updatedAt).slice(0, 16)} />
