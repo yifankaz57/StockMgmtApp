@@ -35,18 +35,51 @@ JAN コードと商品名の対応を利用者みんなで共有する「共有�
 
 アプリは、メールのリンクではなく **メールに書かれた確認コード（数字）** でログインします
 （ホーム画面に追加したアプリと Safari ではログイン状態が共有されないため）。
+Supabase では **自前のメール送信（SMTP）を設定しないとメールの本文を編集できない** ため、先に SMTP を設定します。
 
-1. 「Authentication」→「Sign In / Providers」で **Email** が有効になっていることを確認
-2. 「Authentication」→「Emails」（メールのテンプレート）で、**Magic Link** と **Confirm signup** の本文に
-   `{{ .Token }}` を入れる。例:
+#### 2-1. 送信用の Gmail を用意する
 
-   ```
-   <p>在庫スキャンの確認コード: <strong>{{ .Token }}</strong></p>
-   <p>アプリの画面にこの数字を入力してください。心当たりがなければ、このメールは破棄してください。</p>
-   ```
+送信元のアドレスは受け取る人全員に見えるので、個人用ではなく **このアプリ専用の Gmail アカウント** を作るのがおすすめです。
 
-3. Supabase 標準のメール送信は、送れる数がとても少なく制限されています。利用者が増えてきたら、
-   「Authentication」→「Emails」→「SMTP Settings」で自前のメール送信サービス（SMTP）を設定してください。
+1. 専用の Gmail アカウントを作る
+2. https://myaccount.google.com/security で **2段階認証プロセス** をオンにする
+3. 同じページの検索欄で「アプリ パスワード」を開き、名前（例: Supabase）を入れて作成
+4. 表示された **16文字のパスワード** を控える（画面を閉じると再表示できない）
+
+#### 2-2. Supabase に SMTP を設定する
+
+「Authentication」→「Emails」→「**SMTP Settings**」タブで「Enable custom SMTP」をオンにして入力し、Save。
+
+| 項目 | 値 |
+| --- | --- |
+| Sender email | 2-1 の Gmail アドレス |
+| Sender name | 在庫スキャン |
+| Host | `smtp.gmail.com` |
+| Port number | `465` |
+| Username | 2-1 の Gmail アドレス |
+| Password | 2-1 のアプリ パスワード（空白なし） |
+
+#### 2-3. テンプレートに確認コードを入れる
+
+「Authentication」→「Emails」→「**Templates**」タブで、次の **2つ** を開いて件名と本文を変え、それぞれ Save。
+
+- **Magic link or OTP**（2回目以降のログイン）
+- **Confirm sign up**（初めてのログイン）
+
+件名: `在庫スキャンの確認コード`
+
+本文（もとの内容は全部消して貼り付け。`{{ .Token }}` が6桁の数字に置き換わる）:
+
+```html
+<h2>在庫スキャン ログイン</h2>
+<p>確認コード: <strong style="font-size:24px">{{ .Token }}</strong></p>
+<p>アプリの「設定」タブにこの数字を入力してください。</p>
+<p>心当たりがない場合は、このメールを破棄してください。</p>
+```
+
+#### 2-4. 送信数の上限（任意）
+
+「Authentication」→「Rate Limits」の「Rate limit for sending emails」（1時間あたりの送信数）を 30 程度に上げる。
 
 ### 3. アプリに接続先を設定する
 
