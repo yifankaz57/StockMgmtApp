@@ -40,7 +40,7 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .header-side { min-width: 72px; display: flex; gap: 12px; align-items: center; }
 .header-side.right { justify-content: flex-end; }
 .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
-.content.no-pad { padding-bottom: 0; display: flex; flex-direction: column; overflow: hidden; }
+.content.no-pad { position: relative; padding-bottom: 0; display: flex; flex-direction: column; overflow: hidden; }
 .tabbar {
   flex: none; display: flex; height: calc(var(--tabbar-h) + var(--safe-bottom)); padding-bottom: var(--safe-bottom);
   background: rgba(249, 249, 251, 0.96); border-top: 0.5px solid var(--border);
