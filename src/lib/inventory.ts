@@ -1,19 +1,21 @@
 // 在庫管理のドメインロジック（UI・DB から独立した純粋関数）
 
-export type TransactionKind = 'initial' | 'stockIn' | 'stockOut' | 'adjustment';
+/** use = 単純利用モードでの使用（1個ずつ減らす。出庫とは別に集計する） */
+export type TransactionKind = 'initial' | 'stockIn' | 'stockOut' | 'adjustment' | 'use';
 
 export const KIND_LABELS: Record<TransactionKind, string> = {
   initial: '初期登録',
   stockIn: '入庫',
   stockOut: '出庫',
   adjustment: '棚卸',
+  use: '利用',
 };
 
 /** 画面から選べる操作 */
 export const SELECTABLE_KINDS: TransactionKind[] = ['stockIn', 'stockOut', 'adjustment'];
 
 export function isTransactionKind(value: unknown): value is TransactionKind {
-  return value === 'initial' || value === 'stockIn' || value === 'stockOut' || value === 'adjustment';
+  return value === 'initial' || value === 'stockIn' || value === 'stockOut' || value === 'adjustment' || value === 'use';
 }
 
 export type Product = {
@@ -99,6 +101,7 @@ export function calculateStock(
       if (amount <= 0) throw new InventoryError('invalidAmount', '数量は1以上を指定してください。');
       return { newQuantity: current + amount, delta: amount };
     case 'stockOut':
+    case 'use':
       if (amount <= 0) throw new InventoryError('invalidAmount', '数量は1以上を指定してください。');
       if (amount > current) {
         throw new InventoryError('insufficientStock', `在庫が不足しています（現在の在庫: ${current}）。`);
@@ -146,4 +149,21 @@ export function errorMessage(error: unknown): string {
 /** 一覧などで使う「色番号 / 容量」の表示文字列（両方空なら空文字） */
 export function formatShadeVolume(product: Pick<Product, 'shade' | 'volume'>): string {
   return [product.shade, product.volume].filter(Boolean).join(' / ');
+}
+
+/**
+ * 単純利用モード: 同じ商品をこの個数目以降に使う場合は確認する
+ * （2 → 1日の2個目から確認）
+ */
+export const USAGE_CONFIRM_FROM = 2;
+
+/** 今日すでに usedToday 個使っているとき、次の1個の利用に確認が必要か */
+export function needsUsageConfirmation(usedToday: number): boolean {
+  return usedToday + 1 >= USAGE_CONFIRM_FROM;
+}
+
+/** 端末のローカル時刻での「今日の0時」を ISO 文字列（UTC）で返す。created_at との比較用 */
+export function startOfLocalDayIso(now: Date = new Date()): string {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return start.toISOString();
 }

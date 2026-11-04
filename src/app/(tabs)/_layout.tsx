@@ -20,6 +20,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="use"
+        options={{
+          title: '単純利用',
+          tabBarLabel: '利用',
+          tabBarIcon: ({ color, size }) => <Ionicons name="color-fill-outline" color={color as string} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="products"
         options={{
           title: '在庫一覧',

@@ -8,6 +8,8 @@ import {
   formatShadeVolume,
   InventoryError,
   isLowStock,
+  needsUsageConfirmation,
+  startOfLocalDayIso,
   normalizeProductInput,
   parseQuantity,
 } from './inventory.ts';
@@ -94,5 +96,26 @@ describe('formatShadeVolume', () => {
     assert.equal(formatShadeVolume({ shade: '8-NB', volume: '80g' }), '8-NB / 80g');
     assert.equal(formatShadeVolume({ shade: '', volume: '80g' }), '80g');
     assert.equal(formatShadeVolume({ shade: '', volume: '' }), '');
+  });
+});
+
+describe('単純利用', () => {
+  it('利用は出庫と同じく1個ずつ減り、在庫0では使えない', () => {
+    assert.deepEqual(calculateStock(3, 'use', 1), { newQuantity: 2, delta: -1 });
+    assert.throws(
+      () => calculateStock(0, 'use', 1),
+      (e: unknown) => e instanceof InventoryError && e.code === 'insufficientStock',
+    );
+  });
+
+  it('1日の1個目は確認なし、2個目以降は確認する', () => {
+    assert.equal(needsUsageConfirmation(0), false);
+    assert.equal(needsUsageConfirmation(1), true);
+    assert.equal(needsUsageConfirmation(5), true);
+  });
+
+  it('今日の0時（ローカル時刻）を返す', () => {
+    const now = new Date(2026, 10, 4, 15, 30, 12);
+    assert.equal(new Date(startOfLocalDayIso(now)).getTime(), new Date(2026, 10, 4, 0, 0, 0).getTime());
   });
 });

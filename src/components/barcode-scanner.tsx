@@ -17,7 +17,7 @@ export const BARCODE_TYPES: BarcodeType[] = [
 const SAME_CODE_GAP_MS = 1000;
 
 type Props = {
-  /** false の間は読み取り結果を無視する */
+  /** false の間は読み取り結果を無視する（映っているバーコードの追跡は続ける） */
   enabled: boolean;
   onScan: (code: string) => void;
   /** カメラが使えないときに表示する手入力ボタンの処理 */
@@ -31,11 +31,13 @@ export function BarcodeScanner({ enabled, onScan, onManualEntry }: Props) {
   const handleScanned = useCallback(
     ({ data }: { data: string }) => {
       const code = data.trim();
-      if (!enabled || !code) return;
+      if (!code) return;
       const now = Date.now();
       const isSameCodeStillInView = code === last.current.code && now - last.current.at < SAME_CODE_GAP_MS;
+      // 一時停止中（確認ダイアログ表示中など）も「映っている」ことは記録し、
+      // 再開した瞬間に同じ商品を再検出しないようにする
       last.current = { code, at: now };
-      if (isSameCodeStillInView) return;
+      if (!enabled || isSameCodeStillInView) return;
       onScan(code);
     },
     [enabled, onScan],
@@ -69,7 +71,7 @@ export function BarcodeScanner({ enabled, onScan, onManualEntry }: Props) {
         style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
-        onBarcodeScanned={enabled ? handleScanned : undefined}
+        onBarcodeScanned={handleScanned}
       />
       <View pointerEvents="none" style={styles.overlay}>
         <View style={styles.frame} />

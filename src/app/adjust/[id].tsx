@@ -33,7 +33,7 @@ export default function AdjustScreen() {
 
   const [product, setProduct] = useState<Product | null | undefined>(undefined);
   const [kind, setKind] = useState<TransactionKind>(
-    isTransactionKind(params.kind) && params.kind !== 'initial' ? params.kind : 'stockIn',
+    isTransactionKind(params.kind) && SELECTABLE_KINDS.includes(params.kind) ? params.kind : 'stockIn',
   );
   const [amountText, setAmountText] = useState('1');
   const [note, setNote] = useState('');

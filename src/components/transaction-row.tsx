@@ -11,6 +11,7 @@ export const KIND_ICONS: Record<TransactionKind, IconName> = {
   stockIn: 'arrow-down-circle-outline',
   stockOut: 'arrow-up-circle-outline',
   adjustment: 'clipboard-outline',
+  use: 'color-fill-outline',
 };
 
 export function TransactionRow({

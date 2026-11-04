@@ -5,6 +5,7 @@ const KIND_LABELS_FOR_CSV: Record<StockTransaction['kind'], string> = {
   stockIn: '入庫',
   stockOut: '出庫',
   adjustment: '棚卸',
+  use: '利用',
 };
 
 export function escapeCsvField(field: string): string {

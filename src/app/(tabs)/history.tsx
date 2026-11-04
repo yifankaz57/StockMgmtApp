@@ -12,7 +12,7 @@ import { transactionsToCsv } from '@/lib/csv';
 import { errorMessage, KIND_LABELS, type StockTransaction, type TransactionKind } from '@/lib/inventory';
 import { shareCsv, timestampForFileName } from '@/lib/share';
 
-const FILTERS: (TransactionKind | 'all')[] = ['all', 'stockIn', 'stockOut', 'adjustment', 'initial'];
+const FILTERS: (TransactionKind | 'all')[] = ['all', 'use', 'stockIn', 'stockOut', 'adjustment', 'initial'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function dayKey(iso: string): string {

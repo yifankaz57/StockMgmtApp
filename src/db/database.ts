@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
   calculateStock,
+  startOfLocalDayIso,
   InventoryError,
   normalizeProductInput,
   type Product,
@@ -260,4 +261,17 @@ export async function listTransactions(
     ${options.limit ? `LIMIT ${Math.floor(options.limit)}` : ''}`;
   const rows = await db.getAllAsync<TransactionRow>(sql, params);
   return rows.map(toTransaction);
+}
+
+// ---------- 単純利用 ----------
+
+/** 今日（端末のローカル日付）この商品を「利用」で何個使ったか */
+export async function countUsageToday(db: SQLiteDatabase, productId: number, now: Date = new Date()): Promise<number> {
+  const row = await db.getFirstAsync<{ used: number | null }>(
+    `SELECT SUM(-delta) AS used FROM stock_transactions
+     WHERE product_id = ? AND kind = 'use' AND created_at >= ?`,
+    productId,
+    startOfLocalDayIso(now),
+  );
+  return row?.used ?? 0;
 }
