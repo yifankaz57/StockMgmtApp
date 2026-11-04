@@ -55,6 +55,15 @@ export function ScanPage() {
           navigate('/product/new', { barcode: code })
           return
         }
+        if (!product.available) {
+          feedback.error()
+          setResult({
+            type: 'error',
+            title: '利用不可の商品です',
+            message: `${product.name}\nこの商品は「利用不可」に設定されているため、在庫を消費しません。`,
+          })
+          return
+        }
         if (product.quantity <= 0) {
           feedback.error()
           setResult({ type: 'error', title: '在庫がありません', message: `${product.name}\n在庫が 0 のため減らせません。` })

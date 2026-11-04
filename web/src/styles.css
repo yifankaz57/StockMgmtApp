@@ -241,3 +241,19 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .select { font: inherit; font-size: 16px; color: var(--text); border: 0.5px solid var(--border); border-radius: 8px; padding: 4px 8px; background: var(--card); }
 .item-usage { margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--tint); }
 .item-usage.zero { color: var(--text-2); font-weight: 400; }
+
+/* ---------- 利用可能／不可 ---------- */
+.list-row { display: flex; align-items: stretch; background: var(--card); }
+.list-row + .list-row { border-top: 0.5px solid var(--border); }
+.list-row .list-item { flex: 1; min-width: 0; }
+.list-row .avail-toggle + .list-item { padding-left: 4px; }
+.avail-toggle { flex: none; display: flex; align-items: center; justify-content: center; width: 48px; border: 0; background: none; cursor: pointer; padding: 0 0 0 8px; }
+.avail-toggle svg { width: 26px; height: 26px; }
+.avail-toggle.on { color: var(--success); }
+.avail-toggle.off { color: var(--danger); }
+.list-row.unavailable .item-title { color: var(--text-2); }
+.list-row.unavailable .badge { opacity: 0.55; }
+.tag-unavailable { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 6px; background: var(--danger-light); color: var(--danger); font-size: 11px; font-weight: 700; vertical-align: 2px; }
+.avail-row { gap: 4px; padding-left: 4px; }
+.avail-row .avail-toggle { width: 44px; padding: 0; }
+.avail-row.unavailable .row-label { color: var(--danger); font-weight: 700; }

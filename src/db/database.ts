@@ -107,6 +107,8 @@ function toProduct(row: ProductRow): Product {
     volume: row.volume,
     purchasePrice: row.purchase_price ?? null,
     quantity: row.quantity,
+    // 利用可能／不可の切り替えは Web 版のみ。Expo 版では常に利用可能
+    available: true,
     minQuantity: row.min_quantity,
     location: row.location,
     note: row.note,

@@ -12,10 +12,10 @@ import {
   type StockTransaction,
 } from '@shared/inventory'
 import { Icon } from '@/components/Icon'
-import { TransactionRow } from '@/components/rows'
+import { AvailabilityToggle, TransactionRow } from '@/components/rows'
 import { KIND_ICONS } from '@/lib/display'
 import { EmptyState, Page, Section } from '@/components/ui'
-import { deleteProduct, getProduct, listTransactions } from '@/db/database'
+import { deleteProduct, getProduct, listTransactions, setProductAvailable } from '@/db/database'
 import { useDataVersion } from '@/db/events'
 import { goBack, navigate } from '@/router'
 
@@ -98,6 +98,18 @@ export function ProductDetailPage({ id }: { id: number }) {
           </button>
         ))}
       </div>
+
+      <Section title="利用" footer="利用不可にした商品は、スキャンしても在庫を消費せずエラーになります。在庫一覧の左のアイコンでも切り替えられます。">
+        <div className={`row avail-row${product.available ? '' : ' unavailable'}`}>
+          <AvailabilityToggle
+            available={product.available}
+            onChange={(available) => {
+              setProductAvailable(product.id, available).catch((e) => alert(`保存に失敗しました: ${errorMessage(e)}`))
+            }}
+          />
+          <span className="row-label">{product.available ? '利用可能' : '利用不可'}</span>
+        </div>
+      </Section>
 
       <Section title="商品情報">
         <InfoRow label="バーコード" value={product.barcode} />

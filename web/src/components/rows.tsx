@@ -7,29 +7,54 @@ import { QuantityBadge } from './ui'
 export function ProductRow({
   product,
   onClick,
+  onToggleAvailable,
   usage,
 }: {
   product: Product
   onClick: () => void
+  /** 指定すると、行の左に利用可能／不可の切り替えボタンを出す */
+  onToggleAvailable?: (available: boolean) => void
   /** 消費量順のときに表示する、集計期間内の消費量 */
   usage?: number
 }) {
   const sub = productSubtitle(product)
   return (
-    <button type="button" className="list-item" onClick={onClick}>
-      <div className="item-main">
-        <div className="item-title">{product.name}</div>
-        {sub ? <div className="item-sub">{sub}</div> : null}
-        <div className="item-meta">
-          {product.barcode}
-          {product.location ? `　📍${product.location}` : ''}
+    <div className={`list-row${product.available ? '' : ' unavailable'}`}>
+      {onToggleAvailable ? <AvailabilityToggle available={product.available} onChange={onToggleAvailable} /> : null}
+      <button type="button" className="list-item" onClick={onClick}>
+        <div className="item-main">
+          <div className="item-title">
+            {product.available ? null : <span className="tag-unavailable">利用不可</span>}
+            {product.name}
+          </div>
+          {sub ? <div className="item-sub">{sub}</div> : null}
+          <div className="item-meta">
+            {product.barcode}
+            {product.location ? `　📍${product.location}` : ''}
+          </div>
+          {usage !== undefined ? (
+            <div className={`item-usage${usage > 0 ? '' : ' zero'}`}>今期の消費 {usage} 個</div>
+          ) : null}
         </div>
-        {usage !== undefined ? (
-          <div className={`item-usage${usage > 0 ? '' : ' zero'}`}>今期の消費 {usage} 個</div>
-        ) : null}
-      </div>
-      <QuantityBadge product={product} />
-      <Icon name="chevron" className="chevron" />
+        <QuantityBadge product={product} />
+        <Icon name="chevron" className="chevron" />
+      </button>
+    </div>
+  )
+}
+
+/** 利用可能（緑のチェック）／利用不可（赤の禁止マーク）を1タップで切り替える */
+export function AvailabilityToggle({ available, onChange }: { available: boolean; onChange: (available: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      className={`avail-toggle${available ? ' on' : ' off'}`}
+      role="switch"
+      aria-checked={available}
+      aria-label={available ? '利用可能（タップで利用不可にする）' : '利用不可（タップで利用可能にする）'}
+      title={available ? '利用可能' : '利用不可'}
+      onClick={() => onChange(!available)}>
+      <Icon name={available ? 'checkCircle' : 'ban'} />
     </button>
   )
 }

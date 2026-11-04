@@ -14,7 +14,7 @@ import {
 import { Icon } from '@/components/Icon'
 import { ProductRow } from '@/components/rows'
 import { EmptyState, IconButton, Page, Segmented } from '@/components/ui'
-import { getUsageResetDay, listProducts, usageTotals } from '@/db/database'
+import { getUsageResetDay, listProducts, setProductAvailable, usageTotals } from '@/db/database'
 import { useDataVersion } from '@/db/events'
 import { shareCsv, timestampForFileName } from '@/lib/share'
 import { navigate } from '@/router'
@@ -88,6 +88,15 @@ export function ProductsPage() {
     return sortingByUsage ? sortByUsage(matched, usage.totals) : matched
   }, [products, query, lowOnly, sortingByUsage, usage])
 
+  const toggleAvailable = (product: Product, available: boolean) => {
+    // すぐ見た目に反映し、保存後の再読み込みで確定させる
+    setProducts((list) => list.map((p) => (p.id === product.id ? { ...p, available } : p)))
+    setProductAvailable(product.id, available).catch((e) => {
+      alert(`保存に失敗しました: ${errorMessage(e)}`)
+      setProducts((list) => list.map((p) => (p.id === product.id ? { ...p, available: product.available } : p)))
+    })
+  }
+
   const exportCsv = () => {
     if (products.length === 0) {
       alert('出力する商品がありません')
@@ -150,6 +159,7 @@ export function ProductsPage() {
               key={p.id}
               product={p}
               onClick={() => navigate(`/product/${p.id}`)}
+              onToggleAvailable={(available) => toggleAvailable(p, available)}
               usage={sortingByUsage ? usage.totals.get(p.id) ?? 0 : undefined}
             />
           ))}

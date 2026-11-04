@@ -31,6 +31,8 @@ export type Product = {
   /** 1個あたりの仕入れ値（円）。未登録なら null */
   purchasePrice: number | null;
   quantity: number;
+  /** 利用可能か。false の商品はスキャンしても消費しない（エラーにする） */
+  available: boolean;
   /** この数量以下で「在庫少」。0 なら警告しない */
   minQuantity: number;
   location: string;

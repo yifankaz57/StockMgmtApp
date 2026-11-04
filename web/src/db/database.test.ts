@@ -14,6 +14,7 @@ import {
   listProducts,
   listTransactions,
   resetDbConnection,
+  setProductAvailable,
   setUsageResetDay,
   updateProduct,
   usageTotals,
@@ -124,6 +125,7 @@ describe('IndexedDB リポジトリ', () => {
     expect(legacy.name).toBe('旧商品')
     expect(legacy.quantity).toBe(4)
     expect(legacy.purchasePrice).toBeNull()
+    expect(legacy.available).toBe(true)
   })
 
   it('消費量の集計は「利用」だけ、指定時刻以降だけ', async () => {
@@ -142,5 +144,14 @@ describe('IndexedDB リポジトリ', () => {
     await setUsageResetDay(25)
     await resetDbConnection()
     expect(await getUsageResetDay()).toBe(25)
+  })
+
+  it('利用可能／不可を切り替えられる（新規は利用可能）', async () => {
+    const created = await createProduct(input('111', 'A'), 1)
+    expect(created.available).toBe(true)
+    await setProductAvailable(created.id, false)
+    expect((await getProduct(created.id))?.available).toBe(false)
+    await setProductAvailable(created.id, true)
+    expect((await getProduct(created.id))?.available).toBe(true)
   })
 })

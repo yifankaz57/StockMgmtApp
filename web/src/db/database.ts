@@ -37,7 +37,7 @@ interface StockDB extends DBSchema {
 }
 
 export const DATABASE_NAME = 'stock-scan'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 let dbPromise: Promise<IDBPDatabase<StockDB>> | null = null
 
@@ -63,6 +63,14 @@ export function getDb(): Promise<IDBPDatabase<StockDB>> {
         if (oldVersion < 3) {
           // v3: 設定
           db.createObjectStore('settings')
+        }
+        if (oldVersion < 4) {
+          // v4: 利用可能／不可（既存の商品は利用可能）
+          let cursor = await tx.objectStore('products').openCursor()
+          while (cursor) {
+            if (cursor.value.available === undefined) await cursor.update({ ...cursor.value, available: true })
+            cursor = await cursor.continue()
+          }
         }
       },
     })
@@ -110,7 +118,7 @@ export async function createProduct(input: ProductInput, initialQuantity: number
   const db = await getDb()
   const tx = db.transaction(['products', 'transactions'], 'readwrite')
   try {
-    const record = { ...data, quantity, createdAt: now, updatedAt: now } as Omit<Product, 'id'>
+    const record = { ...data, quantity, available: true, createdAt: now, updatedAt: now } as Omit<Product, 'id'>
     const id = await tx.objectStore('products').add(record as Product)
     if (quantity > 0) {
       await tx.objectStore('transactions').add({
@@ -146,6 +154,20 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
     if (isConstraintError(error)) throw duplicateBarcode()
     throw error
   }
+  notifyDataChanged()
+}
+
+/** 利用可能／不可を切り替える */
+export async function setProductAvailable(id: number, available: boolean): Promise<void> {
+  const db = await getDb()
+  const tx = db.transaction('products', 'readwrite')
+  const current = await tx.store.get(id)
+  if (!current) {
+    await tx.done.catch(() => {})
+    throw new InventoryError('notFound', '商品が見つかりません。')
+  }
+  await tx.store.put({ ...current, available, updatedAt: nowIso() })
+  await tx.done
   notifyDataChanged()
 }
 
