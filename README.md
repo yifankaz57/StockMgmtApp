@@ -1,7 +1,16 @@
 # StockMgmtApp（在庫スキャン）
 
-iPhone のカメラで商品のバーコードを読み取り、商品ごとの在庫数を管理するアプリです。
-**Expo（React Native + TypeScript）** で作られているため、**Windows だけで開発・実機確認・ビルド**ができます（Mac 不要）。
+iPhone のカメラで商品のバーコードを読み取り、商品ごとの在庫数を管理するアプリです。2 つの版があります。
+
+| 版 | 場所 | 使い方 |
+| --- | --- | --- |
+| **Web 版（PWA）** | [`web/`](./web) | **URL を開くだけ**で使える。App Store 不要。公開 URL: https://yifankaz57.github.io/StockMgmtApp/ |
+| Expo 版（ネイティブアプリ） | リポジトリ直下 | Expo Go で実行、または EAS Build でアプリ化。Windows だけで開発可能 |
+
+Web 版の詳細は [web/README.md](./web/README.md) を参照してください。以下は Expo 版の説明です。
+Web 版を作る前の Expo 版のソースは `archive/expo-app-v1.0` ブランチにも保存しています。
+
+**Expo 版**は Expo（React Native + TypeScript）で作られているため、**Windows だけで開発・実機確認・ビルド**ができます（Mac 不要）。
 データは端末内の SQLite に保存され、サーバーは不要です。同じコードで Android でも動きます。
 
 ## 主な機能
