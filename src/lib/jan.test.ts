@@ -97,3 +97,10 @@ describe('extractApiErrorMessage', () => {
     assert.equal(extractApiErrorMessage({}), undefined);
   });
 });
+
+describe('buildWebSearchUrl', () => {
+  it('JAN を完全一致（ダブルクォート）で検索する URL', async () => {
+    const { buildWebSearchUrl } = await import('./web-search.ts');
+    assert.equal(buildWebSearchUrl(' 4571167058709 '), 'https://www.google.com/search?q=%224571167058709%22');
+  });
+});

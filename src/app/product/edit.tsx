@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { BarcodeScanner } from '@/components/barcode-scanner';
 import { ProductSuggestions } from '@/components/product-suggestions';
+import { WebSearchButton } from '@/components/web-search-button';
 import { ErrorText, FieldRow, Row, Section, styles as ui } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { createProduct, getProduct, updateProduct } from '@/db/database';
@@ -27,6 +28,8 @@ export default function ProductEditScreen() {
   const [barcode, setBarcode] = useState(params.barcode ?? '');
   const [name, setName] = useState('');
   const [manufacturer, setManufacturer] = useState('');
+  const [shade, setShade] = useState('');
+  const [volume, setVolume] = useState('');
   const [location, setLocation] = useState('');
   const [initialQuantity, setInitialQuantity] = useState('0');
   const [minQuantity, setMinQuantity] = useState('0');
@@ -42,6 +45,8 @@ export default function ProductEditScreen() {
       setBarcode(p.barcode);
       setName(p.name);
       setManufacturer(p.manufacturer);
+      setShade(p.shade);
+      setVolume(p.volume);
       setLocation(p.location);
       setMinQuantity(String(p.minQuantity));
       setNote(p.note);
@@ -60,7 +65,7 @@ export default function ProductEditScreen() {
     }
     setSaving(true);
     try {
-      const input = { barcode, name, manufacturer, location, note, minQuantity: min };
+      const input = { barcode, name, manufacturer, shade, volume, location, note, minQuantity: min };
       if (editingId === null) {
         await createProduct(db, input, initial);
       } else {
@@ -121,6 +126,8 @@ export default function ProductEditScreen() {
           onSelectManufacturer={setManufacturer}
         />
 
+        <WebSearchButton barcode={barcode} />
+
         <Section title="商品情報">
           <FieldRow
             label="商品名"
@@ -130,6 +137,15 @@ export default function ProductEditScreen() {
             autoFocus={!!barcode && editingId === null}
           />
           <FieldRow label="メーカー" value={manufacturer} onChangeText={setManufacturer} placeholder="任意" />
+          <FieldRow
+            label="色番号"
+            value={shade}
+            onChangeText={setShade}
+            placeholder="例: 8-NB（任意）"
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          <FieldRow label="容量" value={volume} onChangeText={setVolume} placeholder="例: 80g（任意）" autoCorrect={false} />
           <FieldRow label="保管場所" value={location} onChangeText={setLocation} placeholder="例: 棚A-3" last />
         </Section>
 

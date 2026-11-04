@@ -13,7 +13,7 @@ import { notifyDataChanged } from './events';
 
 export const DATABASE_NAME = 'stock.db';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /** SQLiteProvider の onInit から呼ばれる。スキーマを作成・移行する */
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
@@ -52,6 +52,13 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     // v2: メーカー列を追加（既存データは空文字）
     await db.execAsync(`ALTER TABLE products ADD COLUMN manufacturer TEXT NOT NULL DEFAULT ''`);
   }
+  if (current < 3) {
+    // v3: 色番号・容量列を追加
+    await db.execAsync(`
+      ALTER TABLE products ADD COLUMN shade TEXT NOT NULL DEFAULT '';
+      ALTER TABLE products ADD COLUMN volume TEXT NOT NULL DEFAULT '';
+    `);
+  }
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -62,6 +69,8 @@ type ProductRow = {
   barcode: string;
   name: string;
   manufacturer: string;
+  shade: string;
+  volume: string;
   quantity: number;
   min_quantity: number;
   location: string;
@@ -88,6 +97,8 @@ function toProduct(row: ProductRow): Product {
     barcode: row.barcode,
     name: row.name,
     manufacturer: row.manufacturer,
+    shade: row.shade,
+    volume: row.volume,
     quantity: row.quantity,
     minQuantity: row.min_quantity,
     location: row.location,
@@ -146,9 +157,9 @@ export async function createProduct(
   try {
     await db.withExclusiveTransactionAsync(async (txn) => {
       const result = await txn.runAsync(
-        `INSERT INTO products (barcode, name, manufacturer, quantity, min_quantity, location, note, created_at, updated_at)
-         VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)`,
-        data.barcode, data.name, data.manufacturer, data.minQuantity, data.location, data.note, now, now,
+        `INSERT INTO products (barcode, name, manufacturer, shade, volume, quantity, min_quantity, location, note, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+        data.barcode, data.name, data.manufacturer, data.shade, data.volume, data.minQuantity, data.location, data.note, now, now,
       );
       productId = result.lastInsertRowId;
       if (initialQuantity > 0) {
@@ -177,9 +188,9 @@ export async function updateProduct(db: SQLiteDatabase, id: number, input: Produ
   const data = normalizeProductInput(input);
   try {
     await db.runAsync(
-      `UPDATE products SET barcode = ?, name = ?, manufacturer = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?
+      `UPDATE products SET barcode = ?, name = ?, manufacturer = ?, shade = ?, volume = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?
        WHERE id = ?`,
-      data.barcode, data.name, data.manufacturer, data.minQuantity, data.location, data.note, nowIso(), id,
+      data.barcode, data.name, data.manufacturer, data.shade, data.volume, data.minQuantity, data.location, data.note, nowIso(), id,
     );
   } catch (error) {
     if (isUniqueConstraintError(error)) {

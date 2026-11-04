@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 
 import {
   calculateStock,
+  formatShadeVolume,
   InventoryError,
   isLowStock,
   normalizeProductInput,
@@ -60,14 +61,14 @@ describe('normalizeProductInput', () => {
   it('前後の空白を除去し、最低在庫数を0以上の整数にする', () => {
     assert.deepEqual(
       normalizeProductInput({
-        barcode: ' 4901234567894 ', name: ' ペン ', manufacturer: ' 文具メーカー ', minQuantity: -2, location: ' 棚A ', note: '',
+        barcode: ' 4901234567894 ', name: ' ペン ', manufacturer: ' 文具メーカー ', shade: ' 8-NB ', volume: ' 80g ', minQuantity: -2, location: ' 棚A ', note: '',
       }),
-      { barcode: '4901234567894', name: 'ペン', manufacturer: '文具メーカー', minQuantity: 0, location: '棚A', note: '' },
+      { barcode: '4901234567894', name: 'ペン', manufacturer: '文具メーカー', shade: '8-NB', volume: '80g', minQuantity: 0, location: '棚A', note: '' },
     );
   });
 
   it('バーコード・商品名が空ならエラー', () => {
-    const base = { barcode: '1', name: 'a', manufacturer: '', minQuantity: 0, location: '', note: '' };
+    const base = { barcode: '1', name: 'a', manufacturer: '', shade: '', volume: '', minQuantity: 0, location: '', note: '' };
     assert.throws(() => normalizeProductInput({ ...base, barcode: '  ' }), (e: unknown) => e instanceof InventoryError && e.code === 'emptyBarcode');
     assert.throws(() => normalizeProductInput({ ...base, name: '' }), (e: unknown) => e instanceof InventoryError && e.code === 'emptyName');
   });
@@ -85,5 +86,13 @@ describe('parseQuantity', () => {
     assert.equal(parseQuantity('-1'), null);
     assert.equal(parseQuantity('1.5'), null);
     assert.equal(parseQuantity('abc'), null);
+  });
+});
+
+describe('formatShadeVolume', () => {
+  it('色番号と容量をつなぐ（空は省略）', () => {
+    assert.equal(formatShadeVolume({ shade: '8-NB', volume: '80g' }), '8-NB / 80g');
+    assert.equal(formatShadeVolume({ shade: '', volume: '80g' }), '80g');
+    assert.equal(formatShadeVolume({ shade: '', volume: '' }), '');
   });
 });

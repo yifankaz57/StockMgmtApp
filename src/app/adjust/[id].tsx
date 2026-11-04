@@ -13,6 +13,7 @@ import { haptics } from '@/lib/haptics';
 import {
   calculateStock,
   errorMessage,
+  formatShadeVolume,
   isTransactionKind,
   KIND_LABELS,
   parseQuantity,
@@ -108,7 +109,11 @@ export default function AdjustScreen() {
           <Row>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={styles.name}>{product.name}</Text>
-              {product.manufacturer ? <Text style={styles.metaText}>{product.manufacturer}</Text> : null}
+              {product.manufacturer || product.shade || product.volume ? (
+                <Text style={styles.metaText}>
+                  {[product.manufacturer, formatShadeVolume(product)].filter(Boolean).join('　')}
+                </Text>
+              ) : null}
               <View style={styles.meta}>
                 <Ionicons name="barcode-outline" size={14} color={Colors.secondaryText} />
                 <Text style={styles.metaText}>{product.barcode}</Text>

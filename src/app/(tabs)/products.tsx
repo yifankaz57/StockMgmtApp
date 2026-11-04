@@ -60,6 +60,7 @@ export default function ProductsScreen() {
       return (
         p.name.toLowerCase().includes(q) ||
         p.manufacturer.toLowerCase().includes(q) ||
+        p.shade.toLowerCase().includes(q) ||
         p.barcode.includes(q) ||
         p.location.toLowerCase().includes(q)
       );
@@ -73,7 +74,7 @@ export default function ProductsScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="商品名・メーカー・バーコード・保管場所"
+          placeholder="商品名・メーカー・色番号・バーコード等"
           placeholderTextColor="#A0A0A6"
           style={styles.searchInput}
           clearButtonMode="while-editing"

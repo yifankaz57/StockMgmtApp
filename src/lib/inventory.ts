@@ -22,6 +22,10 @@ export type Product = {
   name: string;
   /** メーカー（任意） */
   manufacturer: string;
+  /** 色番号（例: 8-NB）。任意 */
+  shade: string;
+  /** 容量（例: 80g, 1000ml）。任意 */
+  volume: string;
   quantity: number;
   /** この数量以下で「在庫少」。0 なら警告しない */
   minQuantity: number;
@@ -48,6 +52,8 @@ export type ProductInput = {
   barcode: string;
   name: string;
   manufacturer: string;
+  shade: string;
+  volume: string;
   minQuantity: number;
   location: string;
   note: string;
@@ -114,6 +120,8 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
     barcode,
     name,
     manufacturer: input.manufacturer.trim(),
+    shade: input.shade.trim(),
+    volume: input.volume.trim(),
     minQuantity: Math.max(0, Math.floor(Number.isFinite(input.minQuantity) ? input.minQuantity : 0)),
     location: input.location.trim(),
     note: input.note.trim(),
@@ -133,4 +141,9 @@ export function parseQuantity(text: string): number | null {
 export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+/** 一覧などで使う「色番号 / 容量」の表示文字列（両方空なら空文字） */
+export function formatShadeVolume(product: Pick<Product, 'shade' | 'volume'>): string {
+  return [product.shade, product.volume].filter(Boolean).join(' / ');
 }

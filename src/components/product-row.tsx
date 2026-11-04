@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { isLowStock, type Product } from '@/lib/inventory';
+import { formatShadeVolume, isLowStock, type Product } from '@/lib/inventory';
 
 export function QuantityBadge({ product, large }: { product: Pick<Product, 'quantity' | 'minQuantity'>; large?: boolean }) {
   const low = isLowStock(product);
@@ -20,9 +20,9 @@ export function ProductRow({ product, onPress }: { product: Product; onPress: ()
         <Text style={styles.name} numberOfLines={1}>
           {product.name}
         </Text>
-        {product.manufacturer ? (
+        {product.manufacturer || product.shade || product.volume ? (
           <Text style={styles.manufacturer} numberOfLines={1}>
-            {product.manufacturer}
+            {[product.manufacturer, formatShadeVolume(product)].filter(Boolean).join('　')}
           </Text>
         ) : null}
         <View style={styles.meta}>

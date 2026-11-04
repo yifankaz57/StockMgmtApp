@@ -25,13 +25,13 @@ describe('csv 出力', () => {
   it('在庫一覧', () => {
     const csv = productsToCsv([
       {
-        id: 1, barcode: '4901234567894', name: 'ペン, 黒', manufacturer: '文具メーカー', quantity: 3, minQuantity: 5,
+        id: 1, barcode: '4901234567894', name: 'ペン, 黒', manufacturer: '文具メーカー', shade: '8-NB', volume: '80g', quantity: 3, minQuantity: 5,
         location: '棚A', note: '', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z',
       },
     ]);
     const lines = csv.split('\r\n');
-    assert.equal(lines[0], 'バーコード,商品名,メーカー,在庫数,最低在庫数,保管場所,メモ,更新日時');
-    assert.match(lines[1], /^4901234567894,"ペン, 黒",文具メーカー,3,5,棚A,,\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/);
+    assert.equal(lines[0], 'バーコード,商品名,メーカー,色番号,容量,在庫数,最低在庫数,保管場所,メモ,更新日時');
+    assert.match(lines[1], /^4901234567894,"ペン, 黒",文具メーカー,8-NB,80g,3,5,棚A,,\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/);
     assert.equal(lines[2], '');
   });
 
