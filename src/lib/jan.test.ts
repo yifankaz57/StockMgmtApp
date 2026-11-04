@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import {
   buildSuggestions,
   cleanProductName,
+  extractApiErrorMessage,
   isValidJan,
   normalizeJan,
   parseOpenFoodFacts,
@@ -85,5 +86,14 @@ describe('parseYahooShopping', () => {
 
   it('hits が無い応答は空', () => {
     assert.deepEqual(parseYahooShopping({ Error: { Message: 'invalid appid' } }, '4901234567894'), []);
+  });
+});
+
+describe('extractApiErrorMessage', () => {
+  it('Yahoo 形式・一般的な形式・文字列からメッセージを取り出す', () => {
+    assert.equal(extractApiErrorMessage({ Error: { Message: 'Your Request is invalid.' } }), 'Your Request is invalid.');
+    assert.equal(extractApiErrorMessage({ error: { message: 'forbidden' } }), 'forbidden');
+    assert.equal(extractApiErrorMessage('Bad Request'), 'Bad Request');
+    assert.equal(extractApiErrorMessage({}), undefined);
   });
 });

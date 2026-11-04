@@ -4,13 +4,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Colors } from '@/constants/theme';
 import { errorMessage } from '@/lib/inventory';
-import { isValidJan, type ProductSuggestions as Suggestions, type Suggestion } from '@/lib/jan';
-import { lookupProductByJan } from '@/lib/product-lookup';
+import { isValidJan, type Suggestion } from '@/lib/jan';
+import { lookupProductByJan, type LookupResult, type SourceStatus } from '@/lib/product-lookup';
 
 type State =
   | { status: 'idle' }
   | { status: 'loading'; code: string }
-  | { status: 'done'; code: string; result: Suggestions }
+  | { status: 'done'; code: string; result: LookupResult }
   | { status: 'error'; code: string; message: string };
 
 const DEBOUNCE_MS = 500;
@@ -103,7 +103,7 @@ export function ProductSuggestions({
     );
   }
 
-  const { names, manufacturers, sources } = state.result;
+  const { names, manufacturers, sources, statuses } = state.result;
   if (names.length === 0 && manufacturers.length === 0) {
     return (
       <View style={styles.box}>
@@ -111,6 +111,7 @@ export function ProductSuggestions({
           <Ionicons name="search-outline" size={16} color={Colors.secondaryText} />
           <Text style={styles.statusText}>このJANコードの候補は見つかりませんでした。手入力してください。</Text>
         </View>
+        <SourceStatusList statuses={statuses} />
       </View>
     );
   }
@@ -128,6 +129,29 @@ export function ProductSuggestions({
         <SuggestionGroup label="メーカー" items={manufacturers} selected={currentManufacturer} onSelect={onSelectManufacturer} />
       ) : null}
       <Text style={styles.source}>出典: {sources.join('、')}。内容は推定のため確認してください。</Text>
+      <SourceStatusList statuses={statuses.filter((s) => s.state === 'error')} />
+    </View>
+  );
+}
+
+const STATE_LABELS: Record<SourceStatus['state'], string> = {
+  found: '候補あり',
+  notFound: '該当なし',
+  error: 'エラー',
+  disabled: '未使用',
+};
+
+/** 情報源ごとの検索結果（候補が出ない原因の確認用） */
+function SourceStatusList({ statuses }: { statuses: SourceStatus[] }) {
+  if (statuses.length === 0) return null;
+  return (
+    <View style={styles.statusList}>
+      {statuses.map((s) => (
+        <Text key={s.source} style={[styles.statusItem, s.state === 'error' && { color: Colors.danger }]}>
+          ・{s.source}: {STATE_LABELS[s.state]}
+          {s.detail ? `（${s.detail}）` : ''}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -192,6 +216,8 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.tint, borderColor: Colors.tint },
   chipText: { fontSize: 14, color: Colors.text, flexShrink: 1 },
   source: { fontSize: 11, color: Colors.secondaryText },
+  statusList: { gap: 2 },
+  statusItem: { fontSize: 12, color: Colors.secondaryText },
   searchButton: {
     flexDirection: 'row',
     alignItems: 'center',

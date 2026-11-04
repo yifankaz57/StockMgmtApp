@@ -124,3 +124,18 @@ export function buildSuggestions(hits: LookupHit[]): ProductSuggestions {
     sources: [...new Set(hits.map((h) => h.source))],
   };
 }
+
+/** API のエラー応答からメッセージを取り出す（Yahoo: { Error: { Message } } など） */
+export function extractApiErrorMessage(json: unknown): string | undefined {
+  const root = asRecord(json);
+  if (!root) return typeof json === 'string' ? asString(json)?.slice(0, 200) : undefined;
+  const error = asRecord(root.Error) ?? asRecord(root.error);
+  return (
+    asString(error?.Message) ??
+    asString(error?.message) ??
+    asString(root.Error) ??
+    asString(root.error) ??
+    asString(root.message) ??
+    asString(root.status_verbose)
+  );
+}
