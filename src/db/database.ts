@@ -14,7 +14,7 @@ import { notifyDataChanged } from './events';
 
 export const DATABASE_NAME = 'stock.db';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /** SQLiteProvider の onInit から呼ばれる。スキーマを作成・移行する */
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
@@ -60,6 +60,10 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       ALTER TABLE products ADD COLUMN volume TEXT NOT NULL DEFAULT '';
     `);
   }
+  if (current < 4) {
+    // v4: 仕入れ値（円）。NULL = 未登録
+    await db.execAsync(`ALTER TABLE products ADD COLUMN purchase_price REAL`);
+  }
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -72,6 +76,7 @@ type ProductRow = {
   manufacturer: string;
   shade: string;
   volume: string;
+  purchase_price: number | null;
   quantity: number;
   min_quantity: number;
   location: string;
@@ -100,7 +105,10 @@ function toProduct(row: ProductRow): Product {
     manufacturer: row.manufacturer,
     shade: row.shade,
     volume: row.volume,
+    purchasePrice: row.purchase_price ?? null,
     quantity: row.quantity,
+    // 利用可能／不可の切り替えは Web 版のみ。Expo 版では常に利用可能
+    available: true,
     minQuantity: row.min_quantity,
     location: row.location,
     note: row.note,
@@ -158,9 +166,9 @@ export async function createProduct(
   try {
     await db.withExclusiveTransactionAsync(async (txn) => {
       const result = await txn.runAsync(
-        `INSERT INTO products (barcode, name, manufacturer, shade, volume, quantity, min_quantity, location, note, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
-        data.barcode, data.name, data.manufacturer, data.shade, data.volume, data.minQuantity, data.location, data.note, now, now,
+        `INSERT INTO products (barcode, name, manufacturer, shade, volume, purchase_price, quantity, min_quantity, location, note, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+        data.barcode, data.name, data.manufacturer, data.shade, data.volume, data.purchasePrice, data.minQuantity, data.location, data.note, now, now,
       );
       productId = result.lastInsertRowId;
       if (initialQuantity > 0) {
@@ -189,9 +197,9 @@ export async function updateProduct(db: SQLiteDatabase, id: number, input: Produ
   const data = normalizeProductInput(input);
   try {
     await db.runAsync(
-      `UPDATE products SET barcode = ?, name = ?, manufacturer = ?, shade = ?, volume = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?
+      `UPDATE products SET barcode = ?, name = ?, manufacturer = ?, shade = ?, volume = ?, purchase_price = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?
        WHERE id = ?`,
-      data.barcode, data.name, data.manufacturer, data.shade, data.volume, data.minQuantity, data.location, data.note, nowIso(), id,
+      data.barcode, data.name, data.manufacturer, data.shade, data.volume, data.purchasePrice, data.minQuantity, data.location, data.note, nowIso(), id,
     );
   } catch (error) {
     if (isUniqueConstraintError(error)) {

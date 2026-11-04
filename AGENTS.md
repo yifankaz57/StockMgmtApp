@@ -39,3 +39,8 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Branching
+
+- Commit all development work to the `develop` branch (create it from `main` if missing) and push it with `git push -u origin develop`.
+- `main` is production: pushing to it deploys the web app to GitHub Pages. Changes reach `main` only through a pull request from `develop`, opened when the user asks for a release.

@@ -28,7 +28,11 @@ export type Product = {
   shade: string;
   /** 容量（例: 80g, 1000ml）。任意 */
   volume: string;
+  /** 1個あたりの仕入れ値（円）。未登録なら null */
+  purchasePrice: number | null;
   quantity: number;
+  /** 利用可能か。false の商品はスキャンしても消費しない（エラーにする） */
+  available: boolean;
   /** この数量以下で「在庫少」。0 なら警告しない */
   minQuantity: number;
   location: string;
@@ -56,6 +60,8 @@ export type ProductInput = {
   manufacturer: string;
   shade: string;
   volume: string;
+  /** 1個あたりの仕入れ値（円）。未登録なら null */
+  purchasePrice: number | null;
   minQuantity: number;
   location: string;
   note: string;
@@ -67,6 +73,7 @@ export type InventoryErrorCode =
   | 'duplicateBarcode'
   | 'emptyBarcode'
   | 'emptyName'
+  | 'invalidPrice'
   | 'notFound';
 
 export class InventoryError extends Error {
@@ -119,12 +126,17 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
   const name = input.name.trim();
   if (!barcode) throw new InventoryError('emptyBarcode', 'バーコードを入力してください。');
   if (!name) throw new InventoryError('emptyName', '商品名を入力してください。');
+  const price = input.purchasePrice;
+  if (price !== null && !(Number.isFinite(price) && price >= 0 && price <= MAX_PRICE)) {
+    throw new InventoryError('invalidPrice', PRICE_ERROR_MESSAGE);
+  }
   return {
     barcode,
     name,
     manufacturer: input.manufacturer.trim(),
     shade: input.shade.trim(),
     volume: input.volume.trim(),
+    purchasePrice: price === null ? null : roundPrice(price),
     minQuantity: Math.max(0, Math.floor(Number.isFinite(input.minQuantity) ? input.minQuantity : 0)),
     location: input.location.trim(),
     note: input.note.trim(),
@@ -139,6 +151,60 @@ export function parseQuantity(text: string): number | null {
   if (!/^\d+$/.test(halfWidth)) return null;
   const value = Number(halfWidth);
   return Number.isSafeInteger(value) ? value : null;
+}
+
+// ---------- 仕入れ値 ----------
+
+/** 仕入れ値の上限（入力ミス防止。1億円） */
+export const MAX_PRICE = 100_000_000;
+
+export const PRICE_ERROR_MESSAGE = '仕入れ値は0以上の数値（小数は2桁まで）で入力してください。';
+
+/** 小数第2位で丸める（浮動小数点の誤差対策） */
+function roundPrice(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * 仕入れ値の入力欄の文字列を数値に変換する。
+ * 全角数字、桁区切りのカンマ、「¥」「円」を許可する。空欄なら null（未登録）。
+ * 不正な入力なら undefined。
+ */
+export function parsePrice(text: string): number | null | undefined {
+  const normalized = text
+    .trim()
+    .replace(/[０-９．，]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/^[¥￥]\s*/, '')
+    .replace(/\s*円$/, '')
+    .replace(/,/g, '');
+  if (normalized === '') return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return undefined;
+  const value = Number(normalized);
+  return value <= MAX_PRICE ? value : undefined;
+}
+
+/** 金額を「¥1,234」形式にする（小数は必要なときだけ最大2桁） */
+export function formatYen(value: number): string {
+  const [int, frac] = roundPrice(value).toFixed(2).split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return frac === '00' ? `¥${grouped}` : `¥${grouped}.${frac.replace(/0$/, '')}`;
+}
+
+/** 在庫金額（仕入れ値 × 在庫数）。仕入れ値が未登録なら null */
+export function stockValue(product: Pick<Product, 'purchasePrice' | 'quantity'>): number | null {
+  return product.purchasePrice === null ? null : roundPrice(product.purchasePrice * product.quantity);
+}
+
+/** 仕入れ値が登録されている商品の在庫金額の合計と、未登録の商品数 */
+export function totalStockValue(products: Pick<Product, 'purchasePrice' | 'quantity'>[]): { total: number; unpricedCount: number } {
+  let total = 0;
+  let unpricedCount = 0;
+  for (const p of products) {
+    const value = stockValue(p);
+    if (value === null) unpricedCount += 1;
+    else total += value;
+  }
+  return { total: roundPrice(total), unpricedCount };
 }
 
 export function errorMessage(error: unknown): string {
@@ -166,4 +232,59 @@ export function needsUsageConfirmation(usedToday: number): boolean {
 export function startOfLocalDayIso(now: Date = new Date()): string {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return start.toISOString();
+}
+
+// ---------- 消費量（「利用」で減らした個数） ----------
+
+/** 消費量を数え直す日（毎月何日か）の既定値 */
+export const DEFAULT_USAGE_RESET_DAY = 1;
+
+/** 設定値を 1〜31 の整数にする（不正なら既定値） */
+export function normalizeResetDay(value: unknown): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 31 ? value : DEFAULT_USAGE_RESET_DAY;
+}
+
+/** year 年 month 月（0始まり。範囲外は前後の年に繰り越し）のリセット日。その日がない月は月末 */
+function resetDateOf(year: number, month: number, resetDay: number): Date {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(resetDay, daysInMonth));
+}
+
+/**
+ * 現在の消費量の集計期間（端末のローカル時刻）。
+ * start: 直近のリセット日の0時、end: 次のリセット日の0時（この時刻は含まない）
+ */
+export function usagePeriod(resetDay: number, now: Date = new Date()): { start: Date; end: Date } {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const thisMonth = resetDateOf(y, m, resetDay);
+  const startMonth = now >= thisMonth ? m : m - 1;
+  return { start: resetDateOf(y, startMonth, resetDay), end: resetDateOf(y, startMonth + 1, resetDay) };
+}
+
+/** 「11/1〜11/30」形式（end は含まないので前日まで） */
+export function formatUsagePeriod(period: { start: Date; end: Date }): string {
+  const last = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate() - 1);
+  const md = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${md(period.start)}〜${md(last)}`;
+}
+
+/** 商品ごとの消費量（kind = 'use' の減少数の合計）。sinceIso 以降だけを数える（null なら全期間） */
+export function sumUsageByProduct(
+  transactions: Pick<StockTransaction, 'productId' | 'kind' | 'delta' | 'createdAt'>[],
+  sinceIso: string | null,
+): Map<number, number> {
+  const totals = new Map<number, number>();
+  for (const t of transactions) {
+    if (t.kind !== 'use' || (sinceIso !== null && t.createdAt < sinceIso)) continue;
+    totals.set(t.productId, (totals.get(t.productId) ?? 0) - t.delta);
+  }
+  return totals;
+}
+
+/** 消費量の多い順（同数なら商品名順）に並べた新しい配列を返す */
+export function sortByUsage<T extends Pick<Product, 'id' | 'name'>>(products: T[], usage: Map<number, number>): T[] {
+  return [...products].sort(
+    (a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || a.name.localeCompare(b.name, 'ja') || a.id - b.id,
+  );
 }

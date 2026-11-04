@@ -4,7 +4,9 @@ import {
   calculateStock,
   InventoryError,
   normalizeProductInput,
+  normalizeResetDay,
   startOfLocalDayIso,
+  sumUsageByProduct,
   type Product,
   type ProductInput,
   type StockTransaction,
@@ -27,23 +29,48 @@ interface StockDB extends DBSchema {
     value: StoredTransaction
     indexes: { productId: number; createdAt: string }
   }
+  /** アプリの設定（キーと値） */
+  settings: {
+    key: string
+    value: unknown
+  }
 }
 
 export const DATABASE_NAME = 'stock-scan'
-const DB_VERSION = 1
+const DB_VERSION = 4
 
 let dbPromise: Promise<IDBPDatabase<StockDB>> | null = null
 
 export function getDb(): Promise<IDBPDatabase<StockDB>> {
   if (!dbPromise) {
     dbPromise = openDB<StockDB>(DATABASE_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
+      async upgrade(db, oldVersion, _newVersion, tx) {
         if (oldVersion < 1) {
           const products = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true })
           products.createIndex('barcode', 'barcode', { unique: true })
           const transactions = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true })
           transactions.createIndex('productId', 'productId')
           transactions.createIndex('createdAt', 'createdAt')
+        }
+        if (oldVersion < 2) {
+          // v2: 仕入れ値を追加（既存の商品は未登録 = null）
+          let cursor = await tx.objectStore('products').openCursor()
+          while (cursor) {
+            if (cursor.value.purchasePrice === undefined) await cursor.update({ ...cursor.value, purchasePrice: null })
+            cursor = await cursor.continue()
+          }
+        }
+        if (oldVersion < 3) {
+          // v3: 設定
+          db.createObjectStore('settings')
+        }
+        if (oldVersion < 4) {
+          // v4: 利用可能／不可（既存の商品は利用可能）
+          let cursor = await tx.objectStore('products').openCursor()
+          while (cursor) {
+            if (cursor.value.available === undefined) await cursor.update({ ...cursor.value, available: true })
+            cursor = await cursor.continue()
+          }
         }
       },
     })
@@ -91,7 +118,7 @@ export async function createProduct(input: ProductInput, initialQuantity: number
   const db = await getDb()
   const tx = db.transaction(['products', 'transactions'], 'readwrite')
   try {
-    const record = { ...data, quantity, createdAt: now, updatedAt: now } as Omit<Product, 'id'>
+    const record = { ...data, quantity, available: true, createdAt: now, updatedAt: now } as Omit<Product, 'id'>
     const id = await tx.objectStore('products').add(record as Product)
     if (quantity > 0) {
       await tx.objectStore('transactions').add({
@@ -127,6 +154,20 @@ export async function updateProduct(id: number, input: ProductInput): Promise<vo
     if (isConstraintError(error)) throw duplicateBarcode()
     throw error
   }
+  notifyDataChanged()
+}
+
+/** 利用可能／不可を切り替える */
+export async function setProductAvailable(id: number, available: boolean): Promise<void> {
+  const db = await getDb()
+  const tx = db.transaction('products', 'readwrite')
+  const current = await tx.store.get(id)
+  if (!current) {
+    await tx.done.catch(() => {})
+    throw new InventoryError('notFound', '商品が見つかりません。')
+  }
+  await tx.store.put({ ...current, available, updatedAt: nowIso() })
+  await tx.done
   notifyDataChanged()
 }
 
@@ -217,4 +258,30 @@ export async function countUsageToday(productId: number, now: Date = new Date())
   const since = startOfLocalDayIso(now)
   const items = await db.getAllFromIndex('transactions', 'productId', productId)
   return items.filter((t) => t.kind === 'use' && t.createdAt >= since).reduce((sum, t) => sum - t.delta, 0)
+}
+
+/** 商品ごとの消費量（「利用」の合計）。sinceIso 以降（null なら全期間） */
+export async function usageTotals(sinceIso: string | null): Promise<Map<number, number>> {
+  const db = await getDb()
+  const items =
+    sinceIso === null
+      ? await db.getAll('transactions')
+      : await db.getAllFromIndex('transactions', 'createdAt', IDBKeyRange.lowerBound(sinceIso))
+  return sumUsageByProduct(items, sinceIso)
+}
+
+// ---------- 設定 ----------
+
+const USAGE_RESET_DAY_KEY = 'usageResetDay'
+
+/** 消費量を数え直す日（毎月何日か。既定 1） */
+export async function getUsageResetDay(): Promise<number> {
+  const db = await getDb()
+  return normalizeResetDay(await db.get('settings', USAGE_RESET_DAY_KEY))
+}
+
+export async function setUsageResetDay(day: number): Promise<void> {
+  const db = await getDb()
+  await db.put('settings', normalizeResetDay(day), USAGE_RESET_DAY_KEY)
+  notifyDataChanged()
 }

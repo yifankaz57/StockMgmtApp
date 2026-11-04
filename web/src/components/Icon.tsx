@@ -27,6 +27,8 @@ const PATHS = {
   scan: 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16',
   location: 'M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   offline: 'M3 3l18 18M8.5 8.6A5 5 0 0 0 6 13H5a3 3 0 0 0 0 6h12M11 5.2A6 6 0 0 1 18 11a4 4 0 0 1 2.9 6.3',
+  settings: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
+  ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.7 5.7l12.6 12.6',
 } as const
 
 export type IconName = keyof typeof PATHS

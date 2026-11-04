@@ -9,11 +9,15 @@ import {
   DATABASE_NAME,
   deleteProduct,
   findProductByBarcode,
+  getUsageResetDay,
   getProduct,
   listProducts,
   listTransactions,
   resetDbConnection,
+  setProductAvailable,
+  setUsageResetDay,
   updateProduct,
+  usageTotals,
 } from './database'
 
 const input = (barcode: string, name: string) => ({
@@ -22,6 +26,7 @@ const input = (barcode: string, name: string) => ({
   manufacturer: 'メーカーA',
   shade: '8-NB',
   volume: '80g',
+  purchasePrice: null as number | null,
   minQuantity: 2,
   location: '棚A',
   note: '',
@@ -88,5 +93,65 @@ describe('IndexedDB リポジトリ', () => {
     await deleteProduct(p.id)
     expect(await getProduct(p.id)).toBeNull()
     expect(await listTransactions()).toHaveLength(0)
+  })
+
+  it('仕入れ値を保存・更新できる', async () => {
+    const created = await createProduct({ ...input('111', 'ペン'), purchasePrice: 1200 }, 3)
+    expect((await getProduct(created.id))?.purchasePrice).toBe(1200)
+    await updateProduct(created.id, { ...input('111', 'ペン'), purchasePrice: null })
+    expect((await getProduct(created.id))?.purchasePrice).toBeNull()
+  })
+
+  it('旧バージョン（v1）のデータは仕入れ値「未登録」として読める', async () => {
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open(DATABASE_NAME, 1)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        const products = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true })
+        products.createIndex('barcode', 'barcode', { unique: true })
+        const transactions = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true })
+        transactions.createIndex('productId', 'productId')
+        transactions.createIndex('createdAt', 'createdAt')
+        const { purchasePrice: _omit, ...legacy } = input('222', '旧商品')
+        products.add({ ...legacy, quantity: 4, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
+      }
+      req.onsuccess = () => {
+        req.result.close()
+        resolve()
+      }
+      req.onerror = () => reject(req.error)
+    })
+    const [legacy] = await listProducts()
+    expect(legacy.name).toBe('旧商品')
+    expect(legacy.quantity).toBe(4)
+    expect(legacy.purchasePrice).toBeNull()
+    expect(legacy.available).toBe(true)
+  })
+
+  it('消費量の集計は「利用」だけ、指定時刻以降だけ', async () => {
+    const a = await createProduct(input('111', 'A'), 10)
+    const b = await createProduct(input('222', 'B'), 10)
+    await applyStockChange(a.id, 'use', 1)
+    await applyStockChange(b.id, 'use', 1)
+    await applyStockChange(b.id, 'use', 1)
+    await applyStockChange(a.id, 'stockOut', 5)
+    expect([...(await usageTotals(null))].sort()).toEqual([[a.id, 1], [b.id, 2]])
+    expect((await usageTotals(new Date(Date.now() + 60_000).toISOString())).size).toBe(0)
+  })
+
+  it('リセット日の設定（既定 1日、保存・再読み込み）', async () => {
+    expect(await getUsageResetDay()).toBe(1)
+    await setUsageResetDay(25)
+    await resetDbConnection()
+    expect(await getUsageResetDay()).toBe(25)
+  })
+
+  it('利用可能／不可を切り替えられる（新規は利用可能）', async () => {
+    const created = await createProduct(input('111', 'A'), 1)
+    expect(created.available).toBe(true)
+    await setProductAvailable(created.id, false)
+    expect((await getProduct(created.id))?.available).toBe(false)
+    await setProductAvailable(created.id, true)
+    expect((await getProduct(created.id))?.available).toBe(true)
   })
 })

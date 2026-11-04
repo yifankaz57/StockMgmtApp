@@ -8,26 +8,26 @@ import { ProductDetailPage } from '@/pages/ProductDetailPage'
 import { ProductEditPage } from '@/pages/ProductEditPage'
 import { ProductsPage } from '@/pages/ProductsPage'
 import { ScanPage } from '@/pages/ScanPage'
-import { UsePage } from '@/pages/UsePage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { navigate, useRoute, type Route } from '@/router'
 
 const TABS: { path: string; label: string; icon: IconName }[] = [
   { path: '/scan', label: 'スキャン', icon: 'barcode' },
-  { path: '/use', label: '利用', icon: 'drop' },
   { path: '/products', label: '在庫一覧', icon: 'box' },
   { path: '/history', label: '履歴', icon: 'clock' },
+  { path: '/settings', label: '設定', icon: 'settings' },
 ]
 
 function Screen({ route }: { route: Route }) {
   const [first, second, third] = route.segments
   const id = Number(second)
   switch (first) {
-    case 'use':
-      return <UsePage />
     case 'products':
       return <ProductsPage />
     case 'history':
       return <HistoryPage />
+    case 'settings':
+      return <SettingsPage />
     case 'product':
       if (second === 'new') return <ProductEditPage key={`new-${route.query.get('barcode') ?? ''}`} editingId={null} initialBarcode={route.query.get('barcode') ?? undefined} />
       if (Number.isInteger(id) && third === 'edit') return <ProductEditPage key={`edit-${id}`} editingId={id} />
@@ -45,6 +45,11 @@ function Screen({ route }: { route: Route }) {
 export default function App() {
   const route = useRoute()
   const tab = TABS.find((t) => route.path === t.path)
+
+  // 旧「利用」タブ（スキャンに統合）の URL はスキャンへ
+  useEffect(() => {
+    if (route.path === '/use') navigate('/scan', undefined, { replace: true })
+  }, [route.path])
 
   // iOS では最初のタップで音声を有効化しておく（読み取り音のため）
   useEffect(() => {

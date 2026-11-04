@@ -11,7 +11,16 @@ import { Colors } from '@/constants/theme';
 import { deleteProduct, getProduct, listTransactions } from '@/db/database';
 import { useDataVersion } from '@/db/events';
 import { formatDateTime } from '@/lib/csv';
-import { errorMessage, isLowStock, KIND_LABELS, SELECTABLE_KINDS, type Product, type StockTransaction } from '@/lib/inventory';
+import {
+  errorMessage,
+  formatYen,
+  isLowStock,
+  KIND_LABELS,
+  SELECTABLE_KINDS,
+  stockValue,
+  type Product,
+  type StockTransaction,
+} from '@/lib/inventory';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -105,6 +114,8 @@ export default function ProductDetailScreen() {
           {product.shade ? <LabeledRow label="色番号" value={product.shade} /> : null}
           {product.volume ? <LabeledRow label="容量" value={product.volume} /> : null}
           {product.location ? <LabeledRow label="保管場所" value={product.location} /> : null}
+          <LabeledRow label="仕入れ値" value={product.purchasePrice === null ? '未登録' : formatYen(product.purchasePrice)} />
+          {product.purchasePrice !== null ? <LabeledRow label="在庫金額" value={formatYen(stockValue(product) ?? 0)} /> : null}
           <LabeledRow label="最低在庫数" value={product.minQuantity} />
           <LabeledRow label="登録日時" value={formatDateTime(product.createdAt).slice(0, 16)} />
           <LabeledRow label="更新日時" value={formatDateTime(product.updatedAt).slice(0, 16)} last={!product.note} />
