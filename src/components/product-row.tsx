@@ -20,6 +20,11 @@ export function ProductRow({ product, onPress }: { product: Product; onPress: ()
         <Text style={styles.name} numberOfLines={1}>
           {product.name}
         </Text>
+        {product.manufacturer ? (
+          <Text style={styles.manufacturer} numberOfLines={1}>
+            {product.manufacturer}
+          </Text>
+        ) : null}
         <View style={styles.meta}>
           <Ionicons name="barcode-outline" size={13} color={Colors.secondaryText} />
           <Text style={styles.metaText} numberOfLines={1}>
@@ -52,6 +57,7 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1, gap: 4 },
   name: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  manufacturer: { fontSize: 13, color: Colors.secondaryText },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 12, color: Colors.secondaryText, flexShrink: 1 },
   badge: { minWidth: 44, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: Colors.fill, alignItems: 'center' },

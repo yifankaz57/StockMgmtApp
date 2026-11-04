@@ -20,6 +20,8 @@ export type Product = {
   id: number;
   barcode: string;
   name: string;
+  /** メーカー（任意） */
+  manufacturer: string;
   quantity: number;
   /** この数量以下で「在庫少」。0 なら警告しない */
   minQuantity: number;
@@ -45,6 +47,7 @@ export type StockTransaction = {
 export type ProductInput = {
   barcode: string;
   name: string;
+  manufacturer: string;
   minQuantity: number;
   location: string;
   note: string;
@@ -110,6 +113,7 @@ export function normalizeProductInput(input: ProductInput): ProductInput {
   return {
     barcode,
     name,
+    manufacturer: input.manufacturer.trim(),
     minQuantity: Math.max(0, Math.floor(Number.isFinite(input.minQuantity) ? input.minQuantity : 0)),
     location: input.location.trim(),
     note: input.note.trim(),

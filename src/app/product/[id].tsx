@@ -101,6 +101,7 @@ export default function ProductDetailScreen() {
 
         <Section title="商品情報">
           <LabeledRow label="バーコード" value={product.barcode} />
+          {product.manufacturer ? <LabeledRow label="メーカー" value={product.manufacturer} /> : null}
           {product.location ? <LabeledRow label="保管場所" value={product.location} /> : null}
           <LabeledRow label="最低在庫数" value={product.minQuantity} />
           <LabeledRow label="登録日時" value={formatDateTime(product.createdAt).slice(0, 16)} />

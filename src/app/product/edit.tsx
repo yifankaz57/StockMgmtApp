@@ -25,6 +25,7 @@ export default function ProductEditScreen() {
 
   const [barcode, setBarcode] = useState(params.barcode ?? '');
   const [name, setName] = useState('');
+  const [manufacturer, setManufacturer] = useState('');
   const [location, setLocation] = useState('');
   const [initialQuantity, setInitialQuantity] = useState('0');
   const [minQuantity, setMinQuantity] = useState('0');
@@ -39,6 +40,7 @@ export default function ProductEditScreen() {
       if (!p) return;
       setBarcode(p.barcode);
       setName(p.name);
+      setManufacturer(p.manufacturer);
       setLocation(p.location);
       setMinQuantity(String(p.minQuantity));
       setNote(p.note);
@@ -57,7 +59,7 @@ export default function ProductEditScreen() {
     }
     setSaving(true);
     try {
-      const input = { barcode, name, location, note, minQuantity: min };
+      const input = { barcode, name, manufacturer, location, note, minQuantity: min };
       if (editingId === null) {
         await createProduct(db, input, initial);
       } else {
@@ -117,6 +119,7 @@ export default function ProductEditScreen() {
             placeholder="必須"
             autoFocus={!!barcode && editingId === null}
           />
+          <FieldRow label="メーカー" value={manufacturer} onChangeText={setManufacturer} placeholder="任意" />
           <FieldRow label="保管場所" value={location} onChangeText={setLocation} placeholder="例: 棚A-3" last />
         </Section>
 

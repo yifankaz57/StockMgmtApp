@@ -57,7 +57,12 @@ export default function ProductsScreen() {
     return products.filter((p) => {
       if (lowOnly && !isLowStock(p)) return false;
       if (!q) return true;
-      return p.name.toLowerCase().includes(q) || p.barcode.includes(q) || p.location.toLowerCase().includes(q);
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.manufacturer.toLowerCase().includes(q) ||
+        p.barcode.includes(q) ||
+        p.location.toLowerCase().includes(q)
+      );
     });
   }, [products, query, lowOnly]);
 
@@ -68,7 +73,7 @@ export default function ProductsScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="商品名・バーコード・保管場所"
+          placeholder="商品名・メーカー・バーコード・保管場所"
           placeholderTextColor="#A0A0A6"
           style={styles.searchInput}
           clearButtonMode="while-editing"

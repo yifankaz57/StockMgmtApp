@@ -13,7 +13,7 @@ import { notifyDataChanged } from './events';
 
 export const DATABASE_NAME = 'stock.db';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 /** SQLiteProvider の onInit から呼ばれる。スキーマを作成・移行する */
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
@@ -48,6 +48,10 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_transactions_created ON stock_transactions(created_at);
     `);
   }
+  if (current < 2) {
+    // v2: メーカー列を追加（既存データは空文字）
+    await db.execAsync(`ALTER TABLE products ADD COLUMN manufacturer TEXT NOT NULL DEFAULT ''`);
+  }
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -57,6 +61,7 @@ type ProductRow = {
   id: number;
   barcode: string;
   name: string;
+  manufacturer: string;
   quantity: number;
   min_quantity: number;
   location: string;
@@ -82,6 +87,7 @@ function toProduct(row: ProductRow): Product {
     id: row.id,
     barcode: row.barcode,
     name: row.name,
+    manufacturer: row.manufacturer,
     quantity: row.quantity,
     minQuantity: row.min_quantity,
     location: row.location,
@@ -140,9 +146,9 @@ export async function createProduct(
   try {
     await db.withExclusiveTransactionAsync(async (txn) => {
       const result = await txn.runAsync(
-        `INSERT INTO products (barcode, name, quantity, min_quantity, location, note, created_at, updated_at)
-         VALUES (?, ?, 0, ?, ?, ?, ?, ?)`,
-        data.barcode, data.name, data.minQuantity, data.location, data.note, now, now,
+        `INSERT INTO products (barcode, name, manufacturer, quantity, min_quantity, location, note, created_at, updated_at)
+         VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+        data.barcode, data.name, data.manufacturer, data.minQuantity, data.location, data.note, now, now,
       );
       productId = result.lastInsertRowId;
       if (initialQuantity > 0) {
@@ -171,9 +177,9 @@ export async function updateProduct(db: SQLiteDatabase, id: number, input: Produ
   const data = normalizeProductInput(input);
   try {
     await db.runAsync(
-      `UPDATE products SET barcode = ?, name = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?
+      `UPDATE products SET barcode = ?, name = ?, manufacturer = ?, min_quantity = ?, location = ?, note = ?, updated_at = ?
        WHERE id = ?`,
-      data.barcode, data.name, data.minQuantity, data.location, data.note, nowIso(), id,
+      data.barcode, data.name, data.manufacturer, data.minQuantity, data.location, data.note, nowIso(), id,
     );
   } catch (error) {
     if (isUniqueConstraintError(error)) {

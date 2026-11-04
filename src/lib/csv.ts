@@ -32,10 +32,11 @@ export function formatDateTime(iso: string): string {
 
 export function productsToCsv(products: Product[]): string {
   return toCsv([
-    ['バーコード', '商品名', '在庫数', '最低在庫数', '保管場所', 'メモ', '更新日時'],
+    ['バーコード', '商品名', 'メーカー', '在庫数', '最低在庫数', '保管場所', 'メモ', '更新日時'],
     ...products.map((p) => [
       p.barcode,
       p.name,
+      p.manufacturer,
       p.quantity,
       p.minQuantity,
       p.location,
