@@ -26,7 +26,7 @@ export function SettingsPage() {
     <Page title="設定">
       <Section
         title="消費量の集計"
-        footer="在庫一覧の「消費量の多い順」は、毎月この日の0時から数え直した消費量（スキャンで消費した個数）で並べます。29〜31日を選ぶと、その日がない月は月末に数え直します。">
+        footer="在庫一覧の「消費量の多い順」は、毎月この日の0時から数え直した消費量（スキャンで消費した個数と、手動で出庫した個数の合計）で並べます。29〜31日を選ぶと、その日がない月は月末に数え直します。">
         <label className="row">
           <span className="row-label">リセット日</span>
           <span className="row-value">

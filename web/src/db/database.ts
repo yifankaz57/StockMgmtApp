@@ -260,7 +260,7 @@ export async function countUsageToday(productId: number, now: Date = new Date())
   return items.filter((t) => t.kind === 'use' && t.createdAt >= since).reduce((sum, t) => sum - t.delta, 0)
 }
 
-/** 商品ごとの消費量（「利用」の合計）。sinceIso 以降（null なら全期間） */
+/** 商品ごとの消費量（「利用」と「出庫」の合計）。sinceIso 以降（null なら全期間） */
 export async function usageTotals(sinceIso: string | null): Promise<Map<number, number>> {
   const db = await getDb()
   const items =
