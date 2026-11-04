@@ -1,74 +1,115 @@
 # StockMgmtApp（在庫スキャン）
 
-iPhone のカメラで商品のバーコードを読み取り、商品ごとの在庫数を管理する iOS アプリです。
-SwiftUI + SwiftData + VisionKit で作られており、外部ライブラリやサーバーは不要です（データは端末内に保存）。
+iPhone のカメラで商品のバーコードを読み取り、商品ごとの在庫数を管理するアプリです。
+**Expo（React Native + TypeScript）** で作られているため、**Windows だけで開発・実機確認・ビルド**ができます（Mac 不要）。
+データは端末内の SQLite に保存され、サーバーは不要です。同じコードで Android でも動きます。
 
 ## 主な機能
 
 | 機能 | 内容 |
 | --- | --- |
-| バーコードスキャン | JAN/EAN・UPC・Code128・QR など主要なバーコードを読み取り（VisionKit `DataScannerViewController`） |
+| バーコードスキャン | JAN/EAN・UPC・Code128/39/93・ITF・QR などを読み取り（`expo-camera`） |
 | 照会・操作モード | 読み取った商品の **入庫 / 出庫 / 棚卸** を数量指定で実行。未登録のバーコードは登録画面へ |
 | 連続入庫 / 連続出庫モード | 読み取るたびに在庫を自動で ±1（大量の入荷・出荷作業向け） |
-| 商品管理 | 商品名・保管場所・最低在庫数・メモを登録/編集/削除 |
-| 在庫少アラート | 最低在庫数以下の商品をオレンジ色で強調し、一覧で絞り込み可能 |
+| 商品管理 | 商品名・保管場所・最低在庫数・メモを登録 / 編集 / 削除 |
+| 在庫少アラート | 最低在庫数以下の商品をオレンジ色で強調し、絞り込み可能 |
 | 入出庫履歴 | すべての在庫変動を日付ごとに表示（種別で絞り込み可） |
 | CSV 出力 | 在庫一覧・入出庫履歴を CSV（Excel で開ける UTF-8 BOM 付き）で共有 |
-| 手入力 | カメラが使えない場合もバーコードを手入力して操作可能 |
+| 手入力 | カメラで読めない場合もバーコードを手入力して操作可能 |
 
-## 動作環境
+## Windows での開発手順
 
-- iOS 17.0 以降
-- カメラでのスキャンには A12 Bionic 以降の iPhone（iPhone XS / XR 以降）が必要
-- 開発には **Xcode 16 以降**（Mac）が必要
+### 1. 準備（初回のみ）
 
-## ビルド・実機へのインストール手順
+1. [Node.js](https://nodejs.org/) の **LTS 版（22.18 以降）** をインストール
+2. [Git](https://git-scm.com/download/win) と [VS Code](https://code.visualstudio.com/)（推奨）をインストール
+3. iPhone に App Store から **Expo Go** をインストール
 
-1. Mac で `StockMgmtApp.xcodeproj` を Xcode で開く
-2. 左のナビゲータで `StockMgmtApp` プロジェクト → TARGETS `StockMgmtApp` → **Signing & Capabilities** を開く
-3. **Team** に自分の Apple ID（無料の Personal Team で可）を選択
-   - 必要に応じて **Bundle Identifier**（初期値 `com.example.StockMgmtApp`）を自分固有の値に変更
-4. iPhone を USB またはWi-Fiで接続し、実行先に iPhone を選んで ▶︎（Run）
-5. 初回は iPhone の「設定 → 一般 → VPNとデバイス管理」で開発者を信頼し、iOS 16 以降は「設定 → プライバシーとセキュリティ → デベロッパモード」をオンにする
+### 2. 起動
 
-> シミュレーターではカメラが使えないため、スキャン画面右上の「手入力」で動作を確認できます。
+PowerShell またはコマンドプロンプトで:
 
-## 使い方
+```powershell
+git clone https://github.com/yifankaz57/stockmgmtapp.git
+cd stockmgmtapp
+npm install
+npx expo start
+```
 
-1. **スキャン** タブでバーコードにカメラを向ける
-2. 未登録の商品なら登録画面が開くので、商品名・初期在庫数などを入力して保存
-3. 登録済みの商品なら操作シートが開くので、入庫/出庫/棚卸 と数量を選んで「確定」
-4. 大量に処理する場合は上部のモードを「連続入庫 +1」「連続出庫 −1」に切り替えて次々スキャン
-5. **在庫一覧** タブで在庫数の確認・検索・CSV 出力、**履歴** タブで入出庫履歴を確認
+### 3. iPhone で動作確認
+
+1. PC と iPhone を **同じ Wi-Fi** に接続
+2. ターミナルに表示された QR コードを **iPhone の標準カメラアプリ** で読み取る → Expo Go でアプリが開く
+3. コードを保存すると iPhone 上のアプリに即座に反映されます
+
+> 社内ネットワークなどで接続できない場合は `npx expo start --tunnel` を試してください。
+> Windows ファイアウォールの確認ダイアログが出たら「プライベートネットワーク」を許可してください。
+
+## iPhone に単体アプリとしてインストールする（EAS Build）
+
+Expo Go なしで使える正式なアプリにするには、Expo のクラウドビルド（EAS Build）を使います。Mac は不要です。
+
+**必要なもの:** [Expo アカウント](https://expo.dev/signup)（無料）と **Apple Developer Program**（年額 $99）
+
+```powershell
+npx eas-cli@latest login
+npx eas-cli@latest build:configure     # 初回のみ（EAS プロジェクトを作成）
+```
+
+- **社内の数台にだけ配る（Ad Hoc）**
+  ```powershell
+  npx eas-cli@latest device:create     # 配布する iPhone を登録（表示される URL を iPhone で開く）
+  npx eas-cli@latest build --platform ios --profile preview
+  ```
+  完了後に表示される URL を iPhone で開くとインストールできます。
+- **TestFlight / App Store で配る**
+  ```powershell
+  npx eas-cli@latest build --platform ios --profile production
+  npx eas-cli@latest submit --platform ios
+  ```
+
+> 公開前に `app.json` の `ios.bundleIdentifier` / `android.package`（初期値 `com.example.stockmgmtapp`）を自分固有の値に変更してください。
+
+## 開発用コマンド
+
+| コマンド | 内容 |
+| --- | --- |
+| `npx expo start` | 開発サーバー起動 |
+| `npm run typecheck` | TypeScript の型チェック |
+| `npm run lint` | ESLint |
+| `npm test` | 在庫計算・CSV のユニットテスト（Node 標準のテストランナー） |
+
+> 依存パッケージを追加するときは `npm install` ではなく `npx expo install <パッケージ名>` を使うと、Expo SDK に合ったバージョンが入ります。
 
 ## プロジェクト構成
 
 ```
-StockMgmtApp/
-├── App/StockMgmtApp.swift          # エントリポイント（SwiftData コンテナ設定）
-├── Models/
-│   ├── Product.swift               # 商品モデル（バーコードで一意）
-│   ├── StockTransaction.swift      # 入出庫履歴モデル
-│   └── Inventory.swift             # 在庫計算ロジック・エラー定義
-├── Scanner/
-│   ├── BarcodeScannerView.swift    # VisionKit スキャナーの SwiftUI ラッパー
-│   └── CameraPermission.swift      # カメラ権限
-├── Views/
-│   ├── ContentView.swift           # タブ構成
-│   ├── ScanView.swift              # スキャン画面
-│   ├── ProductListView.swift       # 在庫一覧
-│   ├── ProductDetailView.swift     # 商品詳細・履歴
-│   ├── ProductEditView.swift       # 商品登録・編集
-│   ├── StockAdjustView.swift       # 入庫・出庫・棚卸シート
-│   └── HistoryView.swift           # 入出庫履歴
-└── Utilities/                      # CSV 出力・触覚フィードバック・プレビュー用データ
+src/
+├── app/                      # 画面（Expo Router: ファイル = 画面）
+│   ├── _layout.tsx           # ルート（SQLite・画面遷移の設定）
+│   ├── (tabs)/
+│   │   ├── _layout.tsx       # 下部タブ
+│   │   ├── index.tsx         # スキャン
+│   │   ├── products.tsx      # 在庫一覧
+│   │   └── history.tsx       # 入出庫履歴
+│   ├── product/[id].tsx      # 商品詳細
+│   ├── product/edit.tsx      # 商品登録・編集
+│   └── adjust/[id].tsx       # 入庫・出庫・棚卸
+├── components/               # 再利用部品（スキャナー・行表示・UI 部品）
+├── db/
+│   ├── database.ts           # SQLite スキーマと読み書き
+│   └── events.ts             # データ変更の通知
+├── lib/
+│   ├── inventory.ts          # 在庫計算・入力チェック（＋テスト）
+│   ├── csv.ts                # CSV 生成（＋テスト）
+│   ├── share.ts              # CSV ファイルの書き出し・共有
+│   └── haptics.ts            # 触覚フィードバック
+└── constants/theme.ts        # 色
 ```
-
-`StockMgmtApp/` フォルダは Xcode の「同期フォルダ」として登録されているため、Finder や Xcode でファイルを追加するだけで自動的にビルド対象になります。
 
 ## 今後の拡張アイデア
 
-- iCloud（CloudKit）同期で複数端末・複数人で在庫を共有
+- クラウド同期（Supabase / Firebase など）で複数端末・複数人で在庫を共有
 - 商品写真の登録
 - CSV インポートによる商品マスタの一括登録
 - 在庫少のプッシュ通知
