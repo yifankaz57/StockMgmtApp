@@ -54,19 +54,20 @@ export function ProductsPage() {
     }
   }, [sort])
 
+  // 今期の消費量は、並べ替えと CSV 出力の両方で使うので常に読み込んでおく
+  // （CSV 出力のタップ時に読み込むと、iPhone で共有シートが開かないことがあるため）
   useEffect(() => {
-    if (sort !== 'usage') return
-    let active = true
+    const request = { active: true }
     void (async () => {
       const resetDay = await getUsageResetDay()
       const period = usagePeriod(resetDay)
       const totals = await usageTotals(period.start.toISOString())
-      if (active) setUsage({ totals, periodLabel: formatUsagePeriod(period), resetDay })
+      if (request.active) setUsage({ totals, periodLabel: formatUsagePeriod(period), resetDay })
     })().catch((e) => alert(`読み込みエラー: ${errorMessage(e)}`))
     return () => {
-      active = false
+      request.active = false
     }
-  }, [sort, version])
+  }, [version])
 
   useEffect(() => {
     listProducts()
@@ -103,7 +104,7 @@ export function ProductsPage() {
       return
     }
     const ts = timestampForFileName()
-    void shareCsv(`在庫一覧_${ts}.csv`, productsToCsv(products), `zaiko_${ts}.csv`).catch((e) =>
+    void shareCsv(`在庫一覧_${ts}.csv`, productsToCsv(products, usage ? { label: usage.periodLabel, totals: usage.totals } : undefined), `zaiko_${ts}.csv`).catch((e) =>
       alert(`CSV出力に失敗しました: ${errorMessage(e)}`),
     )
   }

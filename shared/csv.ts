@@ -31,9 +31,17 @@ export function formatDateTime(iso: string): string {
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-export function productsToCsv(products: Product[]): string {
+/**
+ * 在庫一覧の CSV。
+ * usage を渡すと「在庫数」の右に、集計期間（label。例: 11/1〜11/30）の消費数の列を加える
+ */
+export function productsToCsv(products: Product[], usage?: { label: string; totals: Map<number, number> }): string {
   return toCsv([
-    ['バーコード', 'メーカー', '商品名', '色番号', '容量', '利用', '在庫数', '仕入れ値', '在庫金額', '最低在庫数', '保管場所', 'メモ', '更新日時'],
+    [
+      'バーコード', 'メーカー', '商品名', '色番号', '容量', '利用', '在庫数',
+      ...(usage ? [`今月の消費数（${usage.label}）`] : []),
+      '仕入れ値', '在庫金額', '最低在庫数', '保管場所', 'メモ', '更新日時',
+    ],
     ...products.map((p) => [
       p.barcode,
       p.manufacturer,
@@ -42,6 +50,7 @@ export function productsToCsv(products: Product[]): string {
       p.volume,
       p.available ? '可' : '不可',
       p.quantity,
+      ...(usage ? [usage.totals.get(p.id) ?? 0] : []),
       p.purchasePrice ?? '',
       stockValue(p) ?? '',
       p.minQuantity,
