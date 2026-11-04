@@ -11,6 +11,7 @@ iPhone のカメラで商品のバーコードを読み取り、商品ごとの�
 | バーコードスキャン | JAN/EAN・UPC・Code128/39/93・ITF・QR などを読み取り（`expo-camera`） |
 | 照会・操作モード | 読み取った商品の **入庫 / 出庫 / 棚卸** を数量指定で実行。未登録のバーコードは登録画面へ |
 | 連続入庫 / 連続出庫モード | 読み取るたびに在庫を自動で ±1（大量の入荷・出荷作業向け） |
+| 商品名・メーカーの候補表示 | 未登録の JAN コードを読み取ると、インターネット上の商品データから商品名・メーカー名の候補を表示。タップで入力欄に反映 |
 | 商品管理 | 商品名・メーカー・保管場所・最低在庫数・メモを登録 / 編集 / 削除 |
 | 在庫少アラート | 最低在庫数以下の商品をオレンジ色で強調し、絞り込み可能 |
 | 入出庫履歴 | すべての在庫変動を日付ごとに表示（種別で絞り込み可） |
@@ -52,6 +53,29 @@ npx expo start
 | `You're signed in to Expo Go as "…", but not signed in to Expo CLI` | PC で `npx expo login`（Google/GitHub で登録した場合は `npx expo login --sso`）を実行し、Expo Go と同じアカウントでサインイン。`npx expo whoami` で確認してから `npx expo start` し直す。サインインしたくない場合は Expo Go の Profile → Settings → Sign out でも可 |
 | QR コードを読んでも接続できない | PC と iPhone が同じ Wi-Fi か確認。だめなら `npx expo start --tunnel` |
 | Windows ファイアウォールのダイアログが出た | 「プライベートネットワーク」を許可 |
+
+## JAN コードからの候補表示（任意設定）
+
+商品登録画面では、JAN コード（8桁/13桁、チェックディジットが正しいもの）から商品名・メーカー名の候補を自動で検索します。
+候補はあくまで推定です。タップすると入力欄に反映されるので、内容を確認してから保存してください。
+
+| 情報源 | 設定 | 特徴 |
+| --- | --- | --- |
+| [Open Food Facts](https://world.openfoodfacts.org/) | 不要 | 無料・登録不要。食品・飲料が中心で、日本の商品は収録が少なめ |
+| Yahoo!ショッピング 商品検索API (V3) | Client ID が必要（無料） | 日本の商品を幅広くカバー。メーカー候補はブランド名 |
+
+**Yahoo! を使う場合の設定**
+
+1. [Yahoo!デベロッパーネットワーク](https://e.developer.yahoo.co.jp/register) でアプリケーションを登録し、**Client ID** を取得
+2. プロジェクト直下の `.env.example` をコピーして `.env.local` を作成し、Client ID を記入
+   ```
+   EXPO_PUBLIC_YAHOO_APP_ID=取得したClientID
+   ```
+3. `npx expo start` を起動し直す
+
+> `.env.local` は Git に含まれません。`EXPO_PUBLIC_` で始まる値はアプリ本体に組み込まれるため、
+> Client ID 以外の秘密情報（シークレット等）は書かないでください。
+> 商品データの利用にあたっては各 API の利用規約（Yahoo! はクレジット表示など）を確認してください。
 
 ## iPhone に単体アプリとしてインストールする（EAS Build）
 
@@ -110,6 +134,8 @@ src/
 ├── lib/
 │   ├── inventory.ts          # 在庫計算・入力チェック（＋テスト）
 │   ├── csv.ts                # CSV 生成（＋テスト）
+│   ├── jan.ts                # JAN 検証・候補の整形（＋テスト）
+│   ├── product-lookup.ts     # JAN から商品名・メーカーを検索
 │   ├── share.ts              # CSV ファイルの書き出し・共有
 │   └── haptics.ts            # 触覚フィードバック
 └── constants/theme.ts        # 色

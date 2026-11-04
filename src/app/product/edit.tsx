@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { Ionicons } from '@expo/vector-icons';
 
 import { BarcodeScanner } from '@/components/barcode-scanner';
+import { ProductSuggestions } from '@/components/product-suggestions';
 import { ErrorText, FieldRow, Row, Section, styles as ui } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { createProduct, getProduct, updateProduct } from '@/db/database';
@@ -110,6 +111,15 @@ export default function ProductEditScreen() {
             </Pressable>
           </Row>
         </Section>
+
+        <ProductSuggestions
+          barcode={barcode}
+          autoSearch={editingId === null}
+          currentName={name}
+          currentManufacturer={manufacturer}
+          onSelectName={setName}
+          onSelectManufacturer={setManufacturer}
+        />
 
         <Section title="商品情報">
           <FieldRow
