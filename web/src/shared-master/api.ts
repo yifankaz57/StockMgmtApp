@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { isInStoreCode } from '@shared/inventory'
 import { isValidJan } from '@shared/jan'
 import { normalizeSupabaseUrl } from '@shared/supabase-url'
+import { takeAuthRedirect } from './auth-redirect'
 
 // 共有マスタ（Supabase）との通信。
 // ビルド時に VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY を設定したときだけ有効になる（未設定なら画面にも出ない）。
@@ -44,7 +45,7 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 
 // ---------- ログイン状態 ----------
 
-type SessionState = { ready: boolean; session: Session | null }
+type SessionState = { ready: boolean; session: Session | null; /** メールのリンクからのログインに失敗したときの理由 */ linkError?: string }
 
 let sessionState: SessionState = { ready: !sharedMasterEnabled, session: null }
 const listeners = new Set<() => void>()
@@ -60,9 +61,21 @@ function startSessionTracking() {
   started = true
   sb()
     .then(async (client) => {
-      client.auth.onAuthStateChange((_event, session) => setSession({ ready: true, session }))
+      client.auth.onAuthStateChange((_event, session) => setSession({ ready: true, session, linkError: sessionState.linkError }))
+      // メールのリンクから開かれた場合は、そのログイン情報でログインする
+      const redirect = takeAuthRedirect()
+      if (redirect && 'accessToken' in redirect) {
+        const { data, error } = await client.auth.setSession({ access_token: redirect.accessToken, refresh_token: redirect.refreshToken })
+        if (!error) {
+          setSession({ ready: true, session: data.session })
+          return
+        }
+        sessionState = { ...sessionState, linkError: `メールのリンクからログインできませんでした（${toMessage(error)}）。` }
+      } else if (redirect) {
+        sessionState = { ...sessionState, linkError: redirect.error }
+      }
       const { data } = await client.auth.getSession()
-      setSession({ ready: true, session: data.session })
+      setSession({ ready: true, session: data.session, linkError: sessionState.linkError })
     })
     .catch(() => setSession({ ready: true, session: null }))
 }

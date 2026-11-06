@@ -77,7 +77,19 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 <p>心当たりがない場合は、このメールを破棄してください。</p>
 ```
 
-#### 2-4. 送信数の上限（任意）
+#### 2-4. リンクの戻り先（Site URL）を公開した URL にする
+
+「Authentication」→「**URL Configuration**」の **Site URL** を、公開した Web アプリの URL にして Save。
+
+```
+https://yifankaz57.github.io/StockMgmtApp/
+```
+
+初期値（`http://localhost:3000`）のままだと、テンプレートを変える前の「リンク付きのメール」を押したときに
+`localhost` に飛んでしまいます。Site URL を設定しておけば、リンクを押しても Web アプリが開いてログインできます
+（ただし Safari で開くため、ホーム画面に追加したアプリにはログイン状態が引き継がれません。確認コードでのログインを推奨）。
+
+#### 2-5. 送信数の上限（任意）
 
 「Authentication」→「Rate Limits」の「Rate limit for sending emails」（1時間あたりの送信数）を 30 程度に上げる。
 
