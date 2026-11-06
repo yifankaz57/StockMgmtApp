@@ -5,10 +5,11 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AvailabilityToggle } from '@/components/product-row';
 import { KIND_ICONS, TransactionRow } from '@/components/transaction-row';
-import { Button, EmptyState, LabeledRow, Section } from '@/components/ui';
+import { Button, EmptyState, LabeledRow, Row, Section } from '@/components/ui';
 import { Colors } from '@/constants/theme';
-import { deleteProduct, getProduct, listTransactions } from '@/db/database';
+import { deleteProduct, getProduct, listTransactions, setProductAvailable } from '@/db/database';
 import { useDataVersion } from '@/db/events';
 import { formatDateTime } from '@/lib/csv';
 import {
@@ -108,6 +109,23 @@ export default function ProductDetailScreen() {
           ))}
         </View>
 
+        <Section
+          title="利用"
+          footer="利用不可にした商品は、スキャンしても在庫を消費せずエラーになります。在庫一覧の左のアイコンでも切り替えられます。">
+          <Row last style={{ paddingLeft: 4, gap: 4 }}>
+            <AvailabilityToggle
+              available={product.available}
+              size={28}
+              onChange={(available) => {
+                setProductAvailable(db, product.id, available).catch((e) => Alert.alert('保存に失敗しました', errorMessage(e)));
+              }}
+            />
+            <Text style={[styles.availability, !product.available && { color: Colors.danger, fontWeight: '700' }]}>
+              {product.available ? '利用可能' : '利用不可'}
+            </Text>
+          </Row>
+        </Section>
+
         <Section title="商品情報">
           <LabeledRow label="バーコード" value={product.barcode} />
           {product.manufacturer ? <LabeledRow label="メーカー" value={product.manufacturer} /> : null}
@@ -143,6 +161,7 @@ export default function ProductDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  availability: { fontSize: 16, color: Colors.text },
   headerButton: { color: Colors.tint, fontSize: 17 },
   hero: { alignItems: 'center', paddingTop: 24, gap: 4 },
   quantity: { fontSize: 64, fontWeight: '800', color: Colors.text, fontVariant: ['tabular-nums'] },

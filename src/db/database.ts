@@ -5,6 +5,9 @@ import {
   startOfLocalDayIso,
   InventoryError,
   normalizeProductInput,
+  normalizeResetDay,
+  usageByPeriod,
+  type PeriodUsage,
   type Product,
   type ProductInput,
   type StockTransaction,
@@ -14,7 +17,7 @@ import { notifyDataChanged } from './events';
 
 export const DATABASE_NAME = 'stock.db';
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /** SQLiteProvider の onInit から呼ばれる。スキーマを作成・移行する */
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
@@ -64,6 +67,13 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     // v4: 仕入れ値（円）。NULL = 未登録
     await db.execAsync(`ALTER TABLE products ADD COLUMN purchase_price REAL`);
   }
+  if (current < 5) {
+    // v5: 利用可能／不可（既存の商品は利用可能）と、アプリの設定（キーと値）
+    await db.execAsync(`
+      ALTER TABLE products ADD COLUMN available INTEGER NOT NULL DEFAULT 1;
+      CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);
+    `);
+  }
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -78,6 +88,7 @@ type ProductRow = {
   volume: string;
   purchase_price: number | null;
   quantity: number;
+  available: number;
   min_quantity: number;
   location: string;
   note: string;
@@ -107,8 +118,7 @@ function toProduct(row: ProductRow): Product {
     volume: row.volume,
     purchasePrice: row.purchase_price ?? null,
     quantity: row.quantity,
-    // 利用可能／不可の切り替えは Web 版のみ。Expo 版では常に利用可能
-    available: true,
+    available: row.available !== 0,
     minQuantity: row.min_quantity,
     location: row.location,
     note: row.note,
@@ -212,6 +222,13 @@ export async function updateProduct(db: SQLiteDatabase, id: number, input: Produ
   notifyDataChanged();
 }
 
+/** 利用可能／不可を切り替える */
+export async function setProductAvailable(db: SQLiteDatabase, id: number, available: boolean): Promise<void> {
+  const result = await db.runAsync('UPDATE products SET available = ?, updated_at = ? WHERE id = ?', available ? 1 : 0, nowIso(), id);
+  if (result.changes === 0) throw new InventoryError('notFound', '商品が見つかりません。');
+  notifyDataChanged();
+}
+
 export async function deleteProduct(db: SQLiteDatabase, id: number): Promise<void> {
   await db.runAsync('DELETE FROM products WHERE id = ?', id);
   notifyDataChanged();
@@ -284,4 +301,41 @@ export async function countUsageToday(db: SQLiteDatabase, productId: number, now
     startOfLocalDayIso(now),
   );
   return row?.used ?? 0;
+}
+
+// ---------- 消費量（月ごと） ----------
+
+/** 月ごとの消費量（記録のある最も古い月から今月まで。新しい順） */
+export async function usageByAllPeriods(db: SQLiteDatabase, resetDay: number, now: Date = new Date()): Promise<PeriodUsage[]> {
+  const rows = await db.getAllAsync<{ product_id: number; kind: TransactionKind; delta: number; created_at: string }>(
+    `SELECT product_id, kind, delta, created_at FROM stock_transactions WHERE kind IN ('use', 'stockOut')`,
+  );
+  return usageByPeriod(
+    rows.map((r) => ({ productId: r.product_id, kind: r.kind, delta: r.delta, createdAt: r.created_at })),
+    resetDay,
+    now,
+  );
+}
+
+// ---------- 設定 ----------
+
+export async function getSetting(db: SQLiteDatabase, key: string): Promise<string | null> {
+  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', key);
+  return row?.value ?? null;
+}
+
+export async function setSetting(db: SQLiteDatabase, key: string, value: string): Promise<void> {
+  await db.runAsync('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
+}
+
+const USAGE_RESET_DAY_KEY = 'usageResetDay';
+
+/** 消費量を数え直す日（毎月何日か。既定 1） */
+export async function getUsageResetDay(db: SQLiteDatabase): Promise<number> {
+  return normalizeResetDay(Number(await getSetting(db, USAGE_RESET_DAY_KEY)));
+}
+
+export async function setUsageResetDay(db: SQLiteDatabase, day: number): Promise<void> {
+  await setSetting(db, USAGE_RESET_DAY_KEY, String(normalizeResetDay(day)));
+  notifyDataChanged();
 }

@@ -5,13 +5,32 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ProductRow } from '@/components/product-row';
-import { EmptyState, IconButton } from '@/components/ui';
+import { EmptyState, IconButton, Segmented } from '@/components/ui';
 import { Colors } from '@/constants/theme';
-import { listProducts } from '@/db/database';
+import { getSetting, getUsageResetDay, listProducts, setProductAvailable, setSetting, usageByAllPeriods } from '@/db/database';
 import { useDataVersion } from '@/db/events';
 import { productsToCsv } from '@/lib/csv';
-import { errorMessage, isLowStock, type Product } from '@/lib/inventory';
+import {
+  errorMessage,
+  formatUsagePeriod,
+  isLowStock,
+  sortByUsage,
+  type PeriodUsage,
+  type Product,
+} from '@/lib/inventory';
 import { shareCsv, timestampForFileName } from '@/lib/share';
+
+type SortKey = 'name' | 'usage';
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'name', label: '名前順' },
+  { value: 'usage', label: '消費量の多い順' },
+];
+
+/** 並び順はこの端末に覚えておく */
+const SORT_SETTING_KEY = 'productsSort';
+
+type Usage = { periods: PeriodUsage[]; periodLabel: string; resetDay: number };
 
 export default function ProductsScreen() {
   const db = useSQLiteContext();
@@ -21,10 +40,46 @@ export default function ProductsScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
+  const [sort, setSortState] = useState<SortKey>('name');
+  // 月ごとの消費量（新しい順。先頭が今期）。並べ替えには今期、CSV には全期間を使う
+  const [usage, setUsage] = useState<Usage | null>(null);
 
   useEffect(() => {
     listProducts(db).then(setProducts).catch((e) => Alert.alert('読み込みエラー', errorMessage(e)));
   }, [db, version]);
+
+  useEffect(() => {
+    getSetting(db, SORT_SETTING_KEY)
+      .then((v) => setSortState(v === 'usage' ? 'usage' : 'name'))
+      .catch(() => {});
+  }, [db]);
+
+  // CSV 出力のタップ時に読み込むと共有シートの表示が遅れるので、先に読み込んでおく
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const resetDay = await getUsageResetDay(db);
+      const periods = await usageByAllPeriods(db, resetDay);
+      if (!cancelled) setUsage({ periods, periodLabel: formatUsagePeriod(periods[0]), resetDay });
+    })().catch((e) => Alert.alert('読み込みエラー', errorMessage(e)));
+    return () => {
+      cancelled = true;
+    };
+  }, [db, version]);
+
+  const setSort = (next: SortKey) => {
+    setSortState(next);
+    setSetting(db, SORT_SETTING_KEY, next).catch(() => {});
+  };
+
+  const toggleAvailable = (product: Product, available: boolean) => {
+    // すぐ見た目に反映し、保存後の再読み込みで確定させる
+    setProducts((list) => list.map((p) => (p.id === product.id ? { ...p, available } : p)));
+    setProductAvailable(db, product.id, available).catch((e) => {
+      Alert.alert('保存に失敗しました', errorMessage(e));
+      setProducts((list) => list.map((p) => (p.id === product.id ? { ...p, available: product.available } : p)));
+    });
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -38,7 +93,7 @@ export default function ProductsScreen() {
                 Alert.alert('出力する商品がありません');
                 return;
               }
-              shareCsv(`在庫一覧_${timestampForFileName()}.csv`, productsToCsv(products)).catch((e) =>
+              shareCsv(`在庫一覧_${timestampForFileName()}.csv`, productsToCsv(products, usage?.periods ?? [])).catch((e) =>
                 Alert.alert('CSV出力に失敗しました', errorMessage(e)),
               );
             }}
@@ -48,13 +103,14 @@ export default function ProductsScreen() {
       ),
       headerRightContainerStyle: { paddingRight: 16 },
     });
-  }, [navigation, products]);
+  }, [navigation, products, usage]);
 
   const lowCount = useMemo(() => products.filter(isLowStock).length, [products]);
 
+  const currentTotals = sort === 'usage' && usage ? usage.periods[0].totals : null;
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter((p) => {
+    const matched = products.filter((p) => {
       if (lowOnly && !isLowStock(p)) return false;
       if (!q) return true;
       return (
@@ -65,7 +121,9 @@ export default function ProductsScreen() {
         p.location.toLowerCase().includes(q)
       );
     });
-  }, [products, query, lowOnly]);
+    // listProducts は名前順なので、消費量順のときだけ並べ替える
+    return currentTotals ? sortByUsage(matched, currentTotals) : matched;
+  }, [products, query, lowOnly, currentTotals]);
 
   return (
     <View style={styles.container}>
@@ -83,6 +141,19 @@ export default function ProductsScreen() {
         />
       </View>
 
+      <View style={styles.sortBar}>
+        <Segmented options={SORT_OPTIONS} value={sort} onChange={setSort} />
+        {currentTotals && usage ? (
+          <Text style={styles.period}>
+            集計期間 {usage.periodLabel}（毎月{usage.resetDay}日にリセット。
+            <Text style={styles.link} onPress={() => router.navigate('/settings')}>
+              設定で変更
+            </Text>
+            ）
+          </Text>
+        ) : null}
+      </View>
+
       <View style={styles.filters}>
         <Pressable onPress={() => setLowOnly((v) => !v)} style={[styles.chip, lowOnly && styles.chipActive]}>
           <Ionicons name="warning-outline" size={14} color={lowOnly ? '#fff' : Colors.warning} />
@@ -95,7 +166,12 @@ export default function ProductsScreen() {
         data={filtered}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <ProductRow product={item} onPress={() => router.push({ pathname: '/product/[id]', params: { id: String(item.id) } })} />
+          <ProductRow
+            product={item}
+            onPress={() => router.push({ pathname: '/product/[id]', params: { id: String(item.id) } })}
+            onToggleAvailable={(available) => toggleAvailable(item, available)}
+            usage={currentTotals ? (currentTotals.get(item.id) ?? 0) : undefined}
+          />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 24 }}
@@ -130,6 +206,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   searchInput: { flex: 1, fontSize: 16, paddingVertical: 9, color: Colors.text },
+  sortBar: { marginHorizontal: 16, marginTop: 10, gap: 6 },
+  period: { fontSize: 12, color: Colors.secondaryText, marginHorizontal: 4, lineHeight: 18 },
+  link: { color: Colors.tint, textDecorationLine: 'underline' },
   filters: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginVertical: 10 },
   chip: {
     flexDirection: 'row',

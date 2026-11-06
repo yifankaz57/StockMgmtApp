@@ -98,9 +98,21 @@ VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=anon key
 ```
 
+### 3-2. アプリ版（Expo）に接続先を設定する
+
+1. プロジェクト直下の `.env.example` をコピーして `.env.local` を作り、3. で確認した2つを書く
+
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=anon key
+   ```
+
+2. `npx expo start` を起動し直す（Expo Go でも動きます）
+3. EAS Build でアプリにする場合は、同じ2つを EAS の環境変数（https://expo.dev のプロジェクト →「Environment variables」）にも登録する
+
 ### 4. 自分を運営者にする
 
-1. 公開した Web アプリの「設定」タブで、自分のメールアドレスでログインする（これで利用者として登録される）
+1. Web アプリまたはアプリ版の「設定」タブで、自分のメールアドレスでログインする（これで利用者として登録される）
 2. Supabase の「SQL Editor」で、メールアドレスを自分のものに変えて実行
 
    ```sql
