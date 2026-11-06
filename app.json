@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "在庫スキャン",
+    "name": "在庫スキャナ",
     "slug": "stockmgmtapp",
     "version": "1.0.0",
     "orientation": "portrait",

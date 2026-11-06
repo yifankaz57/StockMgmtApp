@@ -53,7 +53,7 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 | 項目 | 値 |
 | --- | --- |
 | Sender email | 2-1 の Gmail アドレス |
-| Sender name | 在庫スキャン |
+| Sender name | 在庫スキャナ |
 | Host | `smtp.gmail.com` |
 | Port number | `465` |
 | Username | 2-1 の Gmail アドレス |
@@ -66,12 +66,12 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 - **Magic link or OTP**（2回目以降のログイン）
 - **Confirm sign up**（初めてのログイン）
 
-件名: `在庫スキャンの確認コード`
+件名: `在庫スキャナの確認コード`
 
 本文（もとの内容は全部消して貼り付け。`{{ .Token }}` が6桁の数字に置き換わる）:
 
 ```html
-<h2>在庫スキャン ログイン</h2>
+<h2>在庫スキャナ ログイン</h2>
 <p>確認コード: <strong style="font-size:24px">{{ .Token }}</strong></p>
 <p>アプリの「設定」タブにこの数字を入力してください。</p>
 <p>心当たりがない場合は、このメールを破棄してください。</p>
