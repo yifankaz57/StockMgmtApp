@@ -44,3 +44,7 @@ Docs: https://docs.expo.dev/eas/index.md
 
 - Commit all development work to the `develop` branch (create it from `main` if missing) and push it with `git push -u origin develop`.
 - `main` is production: pushing to it deploys the web app to GitHub Pages. Changes reach `main` only through a pull request from `develop`, opened when the user asks for a release.
+
+## Language
+
+- Always reply to the user in Japanese (日本語), including progress updates during work, explanations, questions and summaries. Keep code, identifiers, commit messages and PR titles as they are.

@@ -26,5 +26,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../shared/inventory.ts", "../shared/csv.ts", "../shared/jan.ts", "../shared/web-search.ts", "../shared/ng-words.ts"]
+  "include": ["src", "../shared/inventory.ts", "../shared/csv.ts", "../shared/jan.ts", "../shared/web-search.ts", "../shared/ng-words.ts", "../shared/supabase-url.ts"]
 }

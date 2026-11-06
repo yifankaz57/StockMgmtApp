@@ -3,12 +3,15 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 import { isInStoreCode } from '@shared/inventory'
 import { isValidJan } from '@shared/jan'
+import { normalizeSupabaseUrl } from '@shared/supabase-url'
+import { takeAuthRedirect } from './auth-redirect'
 
 // 共有マスタ（Supabase）との通信。
 // ビルド時に VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY を設定したときだけ有効になる（未設定なら画面にも出ない）。
 // anon key は公開して良い鍵。データの保護はデータベース側の権限（supabase/migrations）で行う。
 
-const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim()
+// 「…supabase.co/rest/v1/」のように余分なパスが付いていても、ホストだけにして使う
+const SUPABASE_URL = normalizeSupabaseUrl(String(import.meta.env.VITE_SUPABASE_URL ?? ''))
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim()
 
 export const sharedMasterEnabled = SUPABASE_URL !== '' && SUPABASE_ANON_KEY !== ''
@@ -42,7 +45,7 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 
 // ---------- ログイン状態 ----------
 
-type SessionState = { ready: boolean; session: Session | null }
+type SessionState = { ready: boolean; session: Session | null; /** メールのリンクからのログインに失敗したときの理由 */ linkError?: string }
 
 let sessionState: SessionState = { ready: !sharedMasterEnabled, session: null }
 const listeners = new Set<() => void>()
@@ -58,9 +61,21 @@ function startSessionTracking() {
   started = true
   sb()
     .then(async (client) => {
-      client.auth.onAuthStateChange((_event, session) => setSession({ ready: true, session }))
+      client.auth.onAuthStateChange((_event, session) => setSession({ ready: true, session, linkError: sessionState.linkError }))
+      // メールのリンクから開かれた場合は、そのログイン情報でログインする
+      const redirect = takeAuthRedirect()
+      if (redirect && 'accessToken' in redirect) {
+        const { data, error } = await client.auth.setSession({ access_token: redirect.accessToken, refresh_token: redirect.refreshToken })
+        if (!error) {
+          setSession({ ready: true, session: data.session })
+          return
+        }
+        sessionState = { ...sessionState, linkError: `メールのリンクからログインできませんでした（${toMessage(error)}）。` }
+      } else if (redirect) {
+        sessionState = { ...sessionState, linkError: redirect.error }
+      }
       const { data } = await client.auth.getSession()
-      setSession({ ready: true, session: data.session })
+      setSession({ ready: true, session: data.session, linkError: sessionState.linkError })
     })
     .catch(() => setSession({ ready: true, session: null }))
 }
@@ -79,7 +94,12 @@ export function useSharedSession(): SessionState {
 
 /** メールに確認コードを送る（初めてのアドレスなら利用者を作る） */
 export async function sendLoginCode(email: string): Promise<void> {
-  const { error } = await (await sb()).auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } })
+  const { error } = await (await sb()).auth.signInWithOtp({
+    email: email.trim(),
+    // メールのリンクを押したときの戻り先。いま開いているアプリの URL（Supabase の Redirect URLs に登録が必要。
+    // 未登録なら Supabase は Site URL に戻す）
+    options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}${window.location.pathname}` },
+  })
   if (error) throw new Error(toMessage(error))
 }
 

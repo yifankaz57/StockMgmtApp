@@ -77,15 +77,36 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 <p>心当たりがない場合は、このメールを破棄してください。</p>
 ```
 
-#### 2-4. 送信数の上限（任意）
+#### 2-4. リンクの戻り先（Site URL）を公開した URL にする
+
+「Authentication」→「**URL Configuration**」の **Site URL** を、公開した Web アプリの URL にして Save。
+
+```
+https://yifankaz57.github.io/StockMgmtApp/
+```
+
+同じ画面の **Redirect URLs** にも「Add URL」で同じ URL を追加して保存します
+（アプリは「確認コードを送る」を押した画面の URL へ戻るよう Supabase に頼みます。ここに登録がないと Site URL に戻ります）。
+URL は大文字小文字も区別されるので、`/StockMgmtApp/` のつづりと末尾の `/` まで正確に入れてください（違うと GitHub Pages の 404 になります）。
+
+初期値（`http://localhost:3000`）のままだと、テンプレートを変える前の「リンク付きのメール」を押したときに
+`localhost` に飛んでしまいます。Site URL を設定しておけば、リンクを押しても Web アプリが開いてログインできます
+（ただし Safari で開くため、ホーム画面に追加したアプリにはログイン状態が引き継がれません。確認コードでのログインを推奨）。
+
+#### 2-5. 送信数の上限（任意）
 
 「Authentication」→「Rate Limits」の「Rate limit for sending emails」（1時間あたりの送信数）を 30 程度に上げる。
 
 ### 3. アプリに接続先を設定する
 
-1. Supabase の「Project Settings」→「API」（または「Data API」）で次の2つを確認
-   - Project URL（例: `https://xxxx.supabase.co`）
-   - anon（public）key（**公開して良い鍵**。`service_role` の鍵は絶対に使わない・公開しない）
+1. Supabase で次の2つを確認する
+   - **Project URL**（例: `https://xxxx.supabase.co`）: 「Project Settings」→「Data API」、または画面上部の「Connect」ボタン。
+     末尾に `/rest/v1/` が付いて表示される場合は、その部分を除いた `https://xxxx.supabase.co` だけを使う
+   - **公開して良い鍵**: 「Project Settings」→「API Keys」で、次のどちらか
+     - 「Publishable key」（`sb_publishable_` で始まる。新しい画面。こちらを推奨）
+     - 「Legacy API Keys」タブの「anon」「public」の鍵（`eyJ` で始まる）
+   - **使ってはいけない鍵**: 「Secret keys」（`sb_secret_` で始まる）と「service_role」の鍵。アプリにも GitHub にも書かない
+   - 変数名は、Publishable key を使う場合も `SUPABASE_ANON_KEY`（アプリ版は `EXPO_PUBLIC_SUPABASE_ANON_KEY`）のままで良い
 2. GitHub のリポジトリで「Settings」→「Secrets and variables」→「Actions」→「Variables」タブ →「New repository variable」で2つ登録
    - `SUPABASE_URL` = Project URL
    - `SUPABASE_ANON_KEY` = anon key
@@ -100,7 +121,7 @@ VITE_SUPABASE_ANON_KEY=anon key
 
 ### 3-2. アプリ版（Expo）に接続先を設定する
 
-1. プロジェクト直下の `.env.example` をコピーして `.env.local` を作り、3. で確認した2つを書く
+1. プロジェクト直下の `.env.example` をコピーして `.env.local` を作り、3. で確認した Project URL と公開して良い鍵を書く
 
    ```
    EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co

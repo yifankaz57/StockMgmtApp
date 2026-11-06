@@ -36,6 +36,25 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      - name: Check shared master settings
+        # 共有マスタは URL と鍵の両方がそろったときだけ有効。片方だけなら Actions の画面に警告を出す
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            echo "共有マスタ: 有効（$SUPABASE_URL）"
+            # https://xxxx.supabase.co の形でなければ注意（アプリ側でホストだけにして使うので動作はする）
+            if ! printf '%s' "$SUPABASE_URL" | grep -Eq '^https://[^/]+/?$'; then
+              echo "::warning title=SUPABASE_URL の形式::https://xxxx.supabase.co の形（末尾の /rest/v1/ などは不要）で登録してください。現在: $SUPABASE_URL"
+            fi
+          elif [ -n "$SUPABASE_URL$SUPABASE_ANON_KEY" ]; then
+            url_state=未設定; [ -n "$SUPABASE_URL" ] && url_state=設定済み
+            key_state=未設定; [ -n "$SUPABASE_ANON_KEY" ] && key_state=設定済み
+            echo "::warning title=共有マスタが無効です::リポジトリの Variables に SUPABASE_URL と SUPABASE_ANON_KEY の両方が必要です（現在: SUPABASE_URL=$url_state / SUPABASE_ANON_KEY=$key_state）。"
+          else
+            echo "共有マスタ: 未設定（機能は表示されません）"
+          fi
       - run: npm run build
         env:
           # https://<user>.github.io/<repo>/ で公開するためのパス

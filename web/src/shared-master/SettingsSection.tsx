@@ -18,7 +18,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** 設定タブの「共有マスタ」: メールでのログイン、投稿のオン/オフ、自分の状態 */
 export function SharedMasterSettings() {
-  const { ready, session } = useSharedSession()
+  const { ready, session, linkError } = useSharedSession()
   if (!sharedMasterEnabled) return null
   return (
     <Section
@@ -31,7 +31,10 @@ export function SharedMasterSettings() {
       ) : session ? (
         <LoggedIn email={session.user.email ?? ''} />
       ) : (
-        <Login />
+        <>
+          <ErrorText message={linkError ?? null} />
+          <Login />
+        </>
       )}
     </Section>
   )
