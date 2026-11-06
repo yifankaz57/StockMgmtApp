@@ -83,9 +83,13 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 
 ### 3. アプリに接続先を設定する
 
-1. Supabase の「Project Settings」→「API」（または「Data API」）で次の2つを確認
-   - Project URL（例: `https://xxxx.supabase.co`）
-   - anon（public）key（**公開して良い鍵**。`service_role` の鍵は絶対に使わない・公開しない）
+1. Supabase で次の2つを確認する
+   - **Project URL**（例: `https://xxxx.supabase.co`）: 「Project Settings」→「Data API」、または画面上部の「Connect」ボタン
+   - **公開して良い鍵**: 「Project Settings」→「API Keys」で、次のどちらか
+     - 「Publishable key」（`sb_publishable_` で始まる。新しい画面。こちらを推奨）
+     - 「Legacy API Keys」タブの「anon」「public」の鍵（`eyJ` で始まる）
+   - **使ってはいけない鍵**: 「Secret keys」（`sb_secret_` で始まる）と「service_role」の鍵。アプリにも GitHub にも書かない
+   - 変数名は、Publishable key を使う場合も `SUPABASE_ANON_KEY`（アプリ版は `EXPO_PUBLIC_SUPABASE_ANON_KEY`）のままで良い
 2. GitHub のリポジトリで「Settings」→「Secrets and variables」→「Actions」→「Variables」タブ →「New repository variable」で2つ登録
    - `SUPABASE_URL` = Project URL
    - `SUPABASE_ANON_KEY` = anon key
@@ -100,7 +104,7 @@ VITE_SUPABASE_ANON_KEY=anon key
 
 ### 3-2. アプリ版（Expo）に接続先を設定する
 
-1. プロジェクト直下の `.env.example` をコピーして `.env.local` を作り、3. で確認した2つを書く
+1. プロジェクト直下の `.env.example` をコピーして `.env.local` を作り、3. で確認した Project URL と公開して良い鍵を書く
 
    ```
    EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
