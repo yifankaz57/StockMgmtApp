@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme';
 import { errorMessage } from '@/lib/inventory';
 import {
   clearBypassKey,
+  deleteMyAccount,
   getPostPreference,
   redeemBypassKey,
   sendLoginCode,
@@ -172,7 +173,7 @@ function LoggedIn({ email }: { email: string }) {
           </Row>
         </Pressable>
       ) : null}
-      <Row last>
+      <Row>
         <Button
           title="ログアウト"
           variant="secondary"
@@ -182,6 +183,30 @@ function LoggedIn({ email }: { email: string }) {
               { text: 'キャンセル', style: 'cancel' },
               { text: 'ログアウト', onPress: () => signOut().catch((e) => Alert.alert('ログアウトできませんでした', errorMessage(e))) },
             ])
+          }
+        />
+      </Row>
+      <Row last>
+        <Button
+          title="アカウントを削除"
+          variant="danger"
+          style={{ flex: 1 }}
+          onPress={() =>
+            Alert.alert(
+              'アカウントを削除しますか？',
+              'メールアドレスと通報が削除され、元に戻せません。共有マスタに登録した商品名は、ほかの利用者との合意を保つため、あなたと結び付かない形（退会した利用者）で残ります。（この端末の在庫データは消えません）',
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                  text: '削除する',
+                  style: 'destructive',
+                  onPress: () =>
+                    deleteMyAccount()
+                      .then(() => Alert.alert('アカウントを削除しました。'))
+                      .catch((e) => Alert.alert('アカウントを削除できませんでした', errorMessage(e))),
+                },
+              ],
+            )
           }
         />
       </Row>

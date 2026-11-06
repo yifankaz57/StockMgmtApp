@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { StockAlertSettingsSection } from '@/components/stock-alert-settings';
 import { LabeledRow, Row, Section } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { getUsageResetDay, setUsageResetDay } from '@/db/database';
 import { useDataVersion } from '@/db/events';
+import { APP_NAME, CONTACT_EMAIL, PRIVACY_POLICY_URL, SUPPORT_URL } from '@/lib/app-info';
 import { errorMessage, formatUsagePeriod, usagePeriod } from '@/lib/inventory';
 import { SharedMasterSettings } from '@/shared-master/settings-section';
 
@@ -51,7 +53,33 @@ export default function SettingsScreen() {
       <StockAlertSettingsSection />
 
       <SharedMasterSettings />
+
+      <Section title="このアプリについて">
+        <LinkRow label="プライバシーポリシー" onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL)} />
+        <LinkRow label="サポート・よくある質問" onPress={() => void WebBrowser.openBrowserAsync(SUPPORT_URL)} />
+        <LinkRow
+          label="お問い合わせ"
+          value={CONTACT_EMAIL}
+          last
+          onPress={() =>
+            void Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`${APP_NAME} へのお問い合わせ`)}`).catch(() =>
+              Alert.alert('メールアプリを開けませんでした', `次のアドレスまでご連絡ください。\n${CONTACT_EMAIL}`),
+            )
+          }
+        />
+      </Section>
     </ScrollView>
+  );
+}
+
+function LinkRow({ label, value, onPress, last }: { label: string; value?: string; onPress: () => void; last?: boolean }) {
+  return (
+    <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => pressed && { backgroundColor: Colors.fill }}>
+      <Row last={last}>
+        <Text style={styles.label}>{label}</Text>
+        {value ? <Text style={styles.linkValue}>{value}</Text> : <Ionicons name="open-outline" size={18} color={Colors.tint} />}
+      </Row>
+    </Pressable>
   );
 }
 
@@ -67,5 +95,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, color: Colors.text, flex: 1 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   monthly: { fontSize: 16, color: Colors.secondaryText },
+  linkValue: { fontSize: 15, color: Colors.tint },
   day: { fontSize: 20, fontWeight: '700', color: Colors.text, minWidth: 48, textAlign: 'center', fontVariant: ['tabular-nums'] },
 });

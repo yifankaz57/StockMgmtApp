@@ -55,7 +55,10 @@ export function SharedCandidates({
   if (!shareable) return null
 
   const report = async (item: SharedCandidate) => {
-    const reason = window.prompt(`「${item.name}」を通報します。理由を入力してください（任意・200文字まで）`, '')
+    const reason = window.prompt(
+      `「${item.name}」を運営に通報します。\n内容がおかしい・宣伝や不適切な文字列など、理由を入力してください（任意・200文字まで）。`,
+      '',
+    )
     if (reason === null) return
     try {
       const result = await reportCandidate(code, item.name_key, reason)
@@ -105,8 +108,14 @@ export function SharedCandidates({
                 </button>
                 {item.confirmed ? <span className="tag-confirmed">確定</span> : null}
                 {session ? (
-                  <button type="button" className="icon-btn report-btn" aria-label={`「${item.name}」を通報`} onClick={() => void report(item)}>
+                  <button
+                    type="button"
+                    className="report-btn"
+                    aria-label={`「${item.name}」を運営に通報`}
+                    title="内容がおかしい候補を運営に知らせます"
+                    onClick={() => void report(item)}>
                     <Icon name="flag" />
+                    通報
                   </button>
                 ) : null}
               </div>
@@ -129,6 +138,7 @@ export function SharedCandidates({
           </>
         )}
         5人が同じ名前で登録すると「確定」になります。
+        {session ? <>内容がおかしい候補は、右の「通報」から運営に知らせられます。</> : null}
       </div>
     </div>
   )

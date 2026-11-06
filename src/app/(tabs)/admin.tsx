@@ -243,7 +243,7 @@ function History({ initialJan }: { initialJan: string }) {
                 {when(item.created_at)}
               </Text>
               <Text style={styles.meta}>
-                {item.user_email ?? item.user_id}
+                {item.user_email ?? '（退会した利用者）'}
                 {item.user_trusted ? '・信頼済み' : ''}
                 {item.user_banned ? '・締め出し中' : ''}
               </Text>
@@ -256,8 +256,12 @@ function History({ initialJan }: { initialJan: string }) {
                     <MiniButton title="非表示" kind="danger" onPress={() => setProposal(item, 'hide')} />
                   </>
                 )}
-                <MiniButton title={item.user_trusted ? '信頼を外す' : '信頼する'} onPress={() => trust(item)} />
-                <MiniButton title={item.user_banned ? '解除' : '締め出す'} kind={item.user_banned ? undefined : 'danger'} onPress={() => void ban(item)} />
+                {item.user_email !== null ? (
+                  <>
+                    <MiniButton title={item.user_trusted ? '信頼を外す' : '信頼する'} onPress={() => trust(item)} />
+                    <MiniButton title={item.user_banned ? '解除' : '締め出す'} kind={item.user_banned ? undefined : 'danger'} onPress={() => void ban(item)} />
+                  </>
+                ) : null}
               </View>
             </Item>
           ))}

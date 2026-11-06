@@ -62,7 +62,11 @@ export function SharedCandidates({
   if (!shareable) return null;
 
   const report = async (item: SharedCandidate) => {
-    const reason = await askText(`「${item.name}」を通報`, '理由を入力してください（任意・200文字まで）', '通報する');
+    const reason = await askText(
+      `「${item.name}」を運営に通報`,
+      '内容がおかしい・宣伝や不適切な文字列など、理由を入力してください（任意・200文字まで）。',
+      '通報する',
+    );
     if (reason === null) return;
     try {
       const result = await reportCandidate(code, item.name_key, reason);
@@ -117,8 +121,14 @@ export function SharedCandidates({
                 </Pressable>
                 {item.confirmed ? <Text style={styles.confirmed}>確定</Text> : null}
                 {session ? (
-                  <Pressable accessibilityLabel={`「${item.name}」を通報`} hitSlop={8} onPress={() => void report(item)} style={styles.reportBtn}>
-                    <Ionicons name="flag-outline" size={18} color={Colors.secondaryText} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`「${item.name}」を運営に通報`}
+                    hitSlop={8}
+                    onPress={() => void report(item)}
+                    style={({ pressed }) => [styles.reportBtn, pressed && { backgroundColor: '#FDECEA' }]}>
+                    <Ionicons name="flag-outline" size={18} color={Colors.danger} />
+                    <Text style={styles.reportText}>通報</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -141,6 +151,7 @@ export function SharedCandidates({
           </>
         )}
         5人が同じ名前で登録すると「確定」になります。
+        {session ? '内容がおかしい候補は、右の「通報」から運営に知らせられます。' : ''}
       </Text>
     </View>
   );
@@ -177,7 +188,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  reportBtn: { padding: 6 },
+  reportBtn: { alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  reportText: { fontSize: 10, fontWeight: '700', color: Colors.danger },
   source: { fontSize: 11, color: Colors.secondaryText, lineHeight: 16 },
   link: { color: Colors.tint, textDecorationLine: 'underline' },
 });

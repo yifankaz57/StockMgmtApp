@@ -25,8 +25,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
-        name: '在庫スキャン',
-        short_name: '在庫スキャン',
+        name: '在庫スキャナ',
+        short_name: '在庫スキャナ',
         description: 'バーコードで在庫を管理するWebアプリ',
         lang: 'ja',
         theme_color: '#006B88',
