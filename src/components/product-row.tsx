@@ -18,21 +18,29 @@ export function ProductRow({
   onPress,
   onToggleAvailable,
   usage,
+  background,
 }: {
   product: Product;
   onPress: () => void;
   /** 指定すると、行の左に利用可能／不可の切り替えボタンを出す */
   onToggleAvailable?: (available: boolean) => void;
-  /** 消費量順のときに表示する、今期の消費量 */
+  /** 消費量順のときに表示する、今月の消費量 */
   usage?: number;
+  /** 在庫の色分け（設定タブ）で当てはまったときの背景色 */
+  background?: string | null;
 }) {
   const unavailable = !product.available;
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, background ? { backgroundColor: background } : null]}>
       {onToggleAvailable ? <AvailabilityToggle available={product.available} onChange={onToggleAvailable} /> : null}
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.row, onToggleAvailable && { paddingLeft: 4 }, pressed && { backgroundColor: Colors.fill }]}>
+        style={({ pressed }) => [
+          styles.row,
+          onToggleAvailable && { paddingLeft: 4 },
+          background ? { backgroundColor: 'transparent' } : null,
+          pressed && { backgroundColor: background ? 'rgba(0,0,0,0.05)' : Colors.fill },
+        ]}>
         <View style={styles.info}>
           <View style={styles.titleRow}>
             {unavailable ? <Text style={styles.tagUnavailable}>利用不可</Text> : null}
@@ -60,7 +68,7 @@ export function ProductRow({
             ) : null}
           </View>
           {usage !== undefined ? (
-            <Text style={[styles.usage, usage === 0 && styles.usageZero]}>今期の消費 {usage} 個</Text>
+            <Text style={[styles.usage, usage === 0 && styles.usageZero]}>今月の消費 {usage} 個</Text>
           ) : null}
         </View>
         <View style={unavailable && { opacity: 0.55 }}>

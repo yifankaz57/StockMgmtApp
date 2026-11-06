@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { StockAlertSettingsSection } from '@/components/stock-alert-settings';
 import { LabeledRow, Row, Section } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { getUsageResetDay, setUsageResetDay } from '@/db/database';
@@ -46,6 +47,8 @@ export default function SettingsScreen() {
         </Row>
         <LabeledRow label="現在の集計期間" value={resetDay ? formatUsagePeriod(usagePeriod(resetDay)) : ''} last />
       </Section>
+
+      <StockAlertSettingsSection />
 
       <SharedMasterSettings />
     </ScrollView>

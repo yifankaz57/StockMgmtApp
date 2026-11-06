@@ -4,7 +4,9 @@ import { errorMessage } from '@shared/inventory'
 import { ErrorText, Section } from '@/components/ui'
 import { navigate } from '@/router'
 import {
+  clearBypassKey,
   getPostPreference,
+  redeemBypassKey,
   sendLoginCode,
   setPostPreference,
   sharedMasterEnabled,
@@ -120,7 +122,7 @@ function Login() {
 
 function LoggedIn({ email }: { email: string }) {
   const { session } = useSharedSession()
-  const { status, error } = useMyStatus(session)
+  const { status, error, reload } = useMyStatus(session)
   const [posting, setPosting] = useState(getPostPreference)
 
   return (
@@ -134,7 +136,13 @@ function LoggedIn({ email }: { email: string }) {
           <div className="row">
             <span className="row-label">信頼度</span>
             <span className="row-value">
-              {status.banned ? '利用停止中' : status.trust === 'trusted' ? '信頼済み（登録がすぐ公開されます）' : '新しい利用者'}
+              {status.banned
+                ? '利用停止中'
+                : status.trust === 'authority'
+                  ? '公認（登録がすぐ確定します）'
+                  : status.trust === 'trusted'
+                    ? '信頼済み（登録がすぐ公開されます）'
+                    : '新しい利用者'}
             </span>
           </div>
           <div className="row">
@@ -159,6 +167,7 @@ function LoggedIn({ email }: { email: string }) {
           }}
         />
       </label>
+      {status && !status.banned ? <BypassKeyRow authority={status.trust === 'authority'} onChange={reload} /> : null}
       {status?.is_admin ? (
         <button type="button" className="row link-row" onClick={() => navigate('/admin')}>
           <span className="row-label">運営の管理画面</span>
@@ -178,5 +187,74 @@ function LoggedIn({ email }: { email: string }) {
         </button>
       </div>
     </>
+  )
+}
+
+/** 認証キー: 運営から受け取ったキーを入れると「公認」になり、登録がすぐ共有マスタに確定する */
+function BypassKeyRow({ authority, onChange }: { authority: boolean; onChange: () => void }) {
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null)
+
+  const run = async (fn: () => Promise<string>) => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      setMessage({ text: await fn(), error: false })
+      setKey('')
+      onChange()
+    } catch (e) {
+      setMessage({ text: errorMessage(e), error: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (authority) {
+    return (
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        <span className="row-label">認証キー</span>
+        <span className="row-value">適用済み（公認）</span>
+        <button
+          type="button"
+          className="link-btn"
+          disabled={busy}
+          onClick={() => {
+            if (window.confirm('認証キーを外しますか？外すと、登録は通常どおり5人の合意が必要になります。')) {
+              void run(async () => {
+                await clearBypassKey()
+                return '認証キーを外しました。'
+              })
+            }
+          }}>
+          外す
+        </button>
+        {message ? <div className={`key-message${message.error ? ' bad' : ''}`}>{message.text}</div> : null}
+      </div>
+    )
+  }
+
+  return (
+    <form
+      className="row"
+      style={{ flexWrap: 'wrap' }}
+      onSubmit={(e) => {
+        e.preventDefault()
+        void run(async () => `認証キー「${(await redeemBypassKey(key)) || '（名前なし）'}」を適用しました。登録がすぐ共有マスタに確定します。`)
+      }}>
+      <span className="row-label">認証キー</span>
+      <input
+        value={key}
+        onChange={(e) => setKey(e.target.value)}
+        placeholder="運営から受け取ったキー"
+        autoComplete="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+      />
+      <button type="submit" className="link-btn bold" disabled={busy || key.trim().length < 8}>
+        適用
+      </button>
+      {message ? <div className={`key-message${message.error ? ' bad' : ''}`}>{message.text}</div> : null}
+    </form>
   )
 }

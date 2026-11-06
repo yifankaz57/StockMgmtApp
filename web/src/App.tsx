@@ -77,7 +77,7 @@ export default function App() {
               type="button"
               className={`tab${t.path === tab.path ? ' active' : ''}`}
               aria-current={t.path === tab.path ? 'page' : undefined}
-              onClick={() => navigate(t.path, undefined, { replace: true })}>
+              onClick={() => navigate(t.path, undefined, { replace: true, root: true })}>
               <Icon name={t.icon} />
               {t.label}
             </button>

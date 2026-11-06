@@ -7,7 +7,7 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { ProductRow } from '@/components/product-row';
 import { EmptyState, IconButton, Segmented } from '@/components/ui';
 import { Colors } from '@/constants/theme';
-import { getSetting, getUsageResetDay, listProducts, setProductAvailable, setSetting, usageByAllPeriods } from '@/db/database';
+import { getSetting, getStockAlerts, getUsageResetDay, listProducts, setProductAvailable, setSetting, usageByAllPeriods } from '@/db/database';
 import { useDataVersion } from '@/db/events';
 import { productsToCsv } from '@/lib/csv';
 import {
@@ -19,6 +19,7 @@ import {
   type Product,
 } from '@/lib/inventory';
 import { shareCsv, timestampForFileName } from '@/lib/share';
+import { STOCK_ALERT_LABELS, stockAlertColor, type StockAlertSettings } from '@/lib/stock-alert';
 
 type SortKey = 'name' | 'usage';
 
@@ -41,8 +42,15 @@ export default function ProductsScreen() {
   const [query, setQuery] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
   const [sort, setSortState] = useState<SortKey>('name');
-  // 月ごとの消費量（新しい順。先頭が今期）。並べ替えには今期、CSV には全期間を使う
+  // 月ごとの消費量（新しい順。先頭が今月）。並べ替えには今月、CSV には全期間を使う
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [alerts, setAlerts] = useState<StockAlertSettings | null>(null);
+
+  useEffect(() => {
+    getStockAlerts(db)
+      .then(setAlerts)
+      .catch(() => {});
+  }, [db, version]);
 
   useEffect(() => {
     listProducts(db).then(setProducts).catch((e) => Alert.alert('読み込みエラー', errorMessage(e)));
@@ -145,7 +153,7 @@ export default function ProductsScreen() {
         <Segmented options={SORT_OPTIONS} value={sort} onChange={setSort} />
         {currentTotals && usage ? (
           <Text style={styles.period}>
-            集計期間 {usage.periodLabel}（毎月{usage.resetDay}日にリセット。
+            今月の集計期間 {usage.periodLabel}（毎月{usage.resetDay}日にリセット。
             <Text style={styles.link} onPress={() => router.navigate('/settings')}>
               設定で変更
             </Text>
@@ -162,6 +170,21 @@ export default function ProductsScreen() {
         <Text style={styles.count}>{filtered.length} 件</Text>
       </View>
 
+      {alerts && (alerts.caution.threshold !== null || alerts.warning.threshold !== null) ? (
+        <View style={styles.legend}>
+          {(['caution', 'warning'] as const).map((key) =>
+            alerts[key].threshold !== null ? (
+              <View key={key} style={styles.legendItem}>
+                <View style={[styles.legendSwatch, { backgroundColor: alerts[key].color }]} />
+                <Text style={styles.legendText}>
+                  {STOCK_ALERT_LABELS[key]}: {alerts[key].threshold}個未満
+                </Text>
+              </View>
+            ) : null,
+          )}
+        </View>
+      ) : null}
+
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
@@ -171,6 +194,7 @@ export default function ProductsScreen() {
             onPress={() => router.push({ pathname: '/product/[id]', params: { id: String(item.id) } })}
             onToggleAvailable={(available) => toggleAvailable(item, available)}
             usage={currentTotals ? (currentTotals.get(item.id) ?? 0) : undefined}
+            background={alerts ? stockAlertColor(item.quantity, alerts) : null}
           />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -222,5 +246,9 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.warning },
   chipText: { fontSize: 13, fontWeight: '600', color: Colors.warning },
   count: { fontSize: 13, color: Colors.secondaryText },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginHorizontal: 16, marginBottom: 8 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendSwatch: { width: 14, height: 14, borderRadius: 4, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(0,0,0,0.2)' },
+  legendText: { fontSize: 12, color: Colors.secondaryText },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginLeft: 16 },
 });

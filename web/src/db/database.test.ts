@@ -9,12 +9,14 @@ import {
   DATABASE_NAME,
   deleteProduct,
   findProductByBarcode,
+  getStockAlerts,
   getUsageResetDay,
   getProduct,
   listProducts,
   listTransactions,
   resetDbConnection,
   setProductAvailable,
+  setStockAlerts,
   setUsageResetDay,
   updateProduct,
   usageTotals,
@@ -155,5 +157,14 @@ describe('IndexedDB リポジトリ', () => {
     expect((await getProduct(created.id))?.available).toBe(false)
     await setProductAvailable(created.id, true)
     expect((await getProduct(created.id))?.available).toBe(true)
+  })
+
+  it('在庫の色分け: 初期は未設定、保存・再読み込み、矛盾は保存しない', async () => {
+    expect((await getStockAlerts()).caution.threshold).toBeNull()
+    await setStockAlerts({ caution: { threshold: 5, color: '#FFF4CC' }, warning: { threshold: 2, color: '#FDE2E1' } })
+    await resetDbConnection()
+    expect(await getStockAlerts()).toEqual({ caution: { threshold: 5, color: '#FFF4CC' }, warning: { threshold: 2, color: '#FDE2E1' } })
+    await expect(setStockAlerts({ caution: { threshold: 2, color: '#FFF4CC' }, warning: { threshold: 5, color: '#FDE2E1' } })).rejects.toThrow(/小さく/)
+    expect((await getStockAlerts()).warning.threshold).toBe(2)
   })
 })
