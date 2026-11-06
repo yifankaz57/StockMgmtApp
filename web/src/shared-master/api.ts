@@ -94,7 +94,12 @@ export function useSharedSession(): SessionState {
 
 /** メールに確認コードを送る（初めてのアドレスなら利用者を作る） */
 export async function sendLoginCode(email: string): Promise<void> {
-  const { error } = await (await sb()).auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } })
+  const { error } = await (await sb()).auth.signInWithOtp({
+    email: email.trim(),
+    // メールのリンクを押したときの戻り先。いま開いているアプリの URL（Supabase の Redirect URLs に登録が必要。
+    // 未登録なら Supabase は Site URL に戻す）
+    options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}${window.location.pathname}` },
+  })
   if (error) throw new Error(toMessage(error))
 }
 

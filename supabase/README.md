@@ -85,6 +85,10 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 https://yifankaz57.github.io/StockMgmtApp/
 ```
 
+同じ画面の **Redirect URLs** にも「Add URL」で同じ URL を追加して保存します
+（アプリは「確認コードを送る」を押した画面の URL へ戻るよう Supabase に頼みます。ここに登録がないと Site URL に戻ります）。
+URL は大文字小文字も区別されるので、`/StockMgmtApp/` のつづりと末尾の `/` まで正確に入れてください（違うと GitHub Pages の 404 になります）。
+
 初期値（`http://localhost:3000`）のままだと、テンプレートを変える前の「リンク付きのメール」を押したときに
 `localhost` に飛んでしまいます。Site URL を設定しておけば、リンクを押しても Web アプリが開いてログインできます
 （ただし Safari で開くため、ホーム画面に追加したアプリにはログイン状態が引き継がれません。確認コードでのログインを推奨）。
