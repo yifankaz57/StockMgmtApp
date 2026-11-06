@@ -116,7 +116,7 @@ export async function signOut(): Promise<void> {
 
 // ---------- 自分の状態 ----------
 
-export type MyStatus = { trust: 'new' | 'trusted'; banned: boolean; is_admin: boolean; proposals_today: number; proposal_limit: number }
+export type MyStatus = { trust: 'new' | 'trusted' | 'authority'; banned: boolean; is_admin: boolean; proposals_today: number; proposal_limit: number }
 
 /** ログイン中の利用者の状態（信頼度・運営者か・今日の投稿数）。reload で取り直す */
 export function useMyStatus(session: Session | null): { status: MyStatus | null; error: string | null; reload: () => void } {
@@ -138,6 +138,20 @@ export function useMyStatus(session: Session | null): { status: MyStatus | null;
   const reload = useCallback(() => setVersion((v) => v + 1), [])
   if (!userId || result?.userId !== userId) return { status: null, error: null, reload }
   return { status: result.status, error: result.error, reload }
+}
+
+// ---------- 認証キー（公認） ----------
+
+/** 認証キーを適用して公認になる。成功したらキーの名前を返す。キーが違えば例外 */
+export async function redeemBypassKey(key: string): Promise<string> {
+  const label = await rpc<string | null>('redeem_bypass_key', { p_key: key })
+  if (label === null) throw new Error('認証キーが正しくないか、無効になっています。')
+  return label
+}
+
+/** 自分の認証キーを外す（公認をやめる） */
+export async function clearBypassKey(): Promise<void> {
+  await rpc<void>('clear_bypass_key')
 }
 
 // ---------- 候補・投稿・通報 ----------
@@ -230,6 +244,7 @@ export type HistoryItem = {
 export type BannedUser = { user_id: string; user_email: string | null; banned_reason: string; proposals: number }
 export type LogItem = { id: number; admin_email: string | null; action: string; target: string; detail: Record<string, unknown>; created_at: string }
 export type ModerationAction = 'approve' | 'hide' | 'restore'
+export type BypassKey = { id: number; label: string; active: boolean; users: number; created_at: string; revoked_at: string | null }
 
 export const adminApi = {
   queue: () => rpc<QueueItem[]>('admin_queue'),
@@ -243,4 +258,7 @@ export const adminApi = {
   setTrust: (userId: string, trust: 'new' | 'trusted') => rpc<void>('admin_set_trust', { p_user_id: userId, p_trust: trust }),
   bannedUsers: () => rpc<BannedUser[]>('admin_banned_users'),
   log: (limit = 100) => rpc<LogItem[]>('admin_log', { p_limit: limit }),
+  createKey: (label: string) => rpc<string>('admin_create_bypass_key', { p_label: label }),
+  listKeys: () => rpc<BypassKey[]>('admin_list_bypass_keys'),
+  revokeKey: (id: number) => rpc<void>('admin_revoke_bypass_key', { p_id: id }),
 }

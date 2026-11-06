@@ -19,8 +19,10 @@ function jan(first12: string): string {
 const JAN_A = jan('490123456789')
 const JAN_B = jan('457116705870')
 
-const users = Array.from({ length: 9 }, (_, i) => `00000000-0000-0000-0000-00000000000${i + 1}`)
+const users = Array.from({ length: 12 }, (_, i) => `00000000-0000-0000-0000-${String(i + 1).padStart(12, "0")}`)
 const ADMIN = users[8]
+const KEY_USER = users[9]
+const OTHER = users[10]
 
 let db: PGlite
 
@@ -197,5 +199,45 @@ describe('共有マスタ（Supabase）のデータベース', () => {
   it('NG ワードはアプリ側（shared/ng-words.ts）と同じ', async () => {
     const rows = await db.query<{ word: string }>('select word from public.ng_words order by word')
     expect(rows.rows.map((r) => r.word)).toEqual([...NG_WORDS].sort())
+  })
+
+  it('認証キー: 運営が発行し、適用した人の登録はすぐ公開・確定。無効化で外れる', async () => {
+    expect(await errorOf(KEY_USER, 'select public.admin_create_bypass_key($1)', ['x'])).toMatch(/運営者の権限/)
+    const [{ key }] = await as<{ key: string }>(ADMIN, 'select public.admin_create_bypass_key($1) as key', ['テスト用'])
+    expect(key).toMatch(/^SMK(-[0-9A-F]{4}){6}$/)
+    // データベースには平文を保存しない
+    const stored = await db.query<{ key_hash: string }>('select key_hash from public.bypass_keys')
+    expect(stored.rows.some((r) => r.key_hash.includes(key))).toBe(false)
+
+    const code = jan('495000000001')
+    // 公認前: 新しい利用者1人だけの登録は保留
+    await submit(OTHER, code, '公認前の名前')
+    expect(await candidates(null, code)).toEqual([])
+
+    // 間違ったキーは null（失敗として記録）
+    expect(await as(KEY_USER, 'select public.redeem_bypass_key($1) as r', ['SMK-0000-0000-0000-0000-0000-0000'])).toEqual([{ r: null }])
+    // 正しいキー（小文字・空白入りでも可）で公認に
+    expect(await as(KEY_USER, 'select public.redeem_bypass_key($1) as r', [` ${key.toLowerCase()} `])).toEqual([{ r: 'テスト用' }])
+    expect((await as<{ trust: string }>(KEY_USER, 'select * from public.my_status()'))[0].trust).toBe('authority')
+
+    await submit(KEY_USER, code, '公認の名前')
+    const list = await candidates(null, code)
+    expect(list.map((c) => [c.name, c.supporters, c.confirmed])).toEqual([['公認の名前', 1, true]])
+
+    // 無効化すると効果が外れる（1人だけの登録は保留に戻る）
+    const [{ id }] = await as<{ id: number }>(ADMIN, 'select id from public.admin_list_bypass_keys()')
+    await as(ADMIN, 'select public.admin_revoke_bypass_key($1)', [id])
+    expect(await candidates(null, code)).toEqual([])
+    expect((await as<{ trust: string }>(KEY_USER, 'select * from public.my_status()'))[0].trust).toBe('new')
+    expect(await as(KEY_USER, 'select public.redeem_bypass_key($1) as r', [key])).toEqual([{ r: null }])
+    const keys = await as<{ active: boolean; users: number }>(ADMIN, 'select * from public.admin_list_bypass_keys()')
+    expect(keys[0]).toMatchObject({ active: false, users: 1 })
+  })
+
+  it('認証キー: 間違いが24時間で10回を超えると入力できない', async () => {
+    const u = users[11]
+    for (let i = 0; i < 10; i++) await as(u, 'select public.redeem_bypass_key($1)', [`WRONG-${i}`])
+    expect(await errorOf(u, 'select public.redeem_bypass_key($1)', ['WRONG-x'])).toMatch(/24時間は入力できません/)
+    expect(await errorOf(null, 'select public.redeem_bypass_key($1)', ['x'])).toMatch(/permission denied/)
   })
 })

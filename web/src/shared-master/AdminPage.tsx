@@ -9,18 +9,20 @@ import {
   useMyStatus,
   useSharedSession,
   type BannedUser,
+  type BypassKey,
   type HistoryItem,
   type LogItem,
   type ModerationAction,
   type QueueItem,
 } from './api'
 
-type Tab = 'queue' | 'history' | 'banned' | 'log'
+type Tab = 'queue' | 'history' | 'banned' | 'keys' | 'log'
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'queue', label: '確認待ち' },
   { value: 'history', label: 'JAN履歴' },
   { value: 'banned', label: '締め出し' },
+  { value: 'keys', label: 'キー' },
   { value: 'log', label: '操作記録' },
 ]
 
@@ -37,6 +39,9 @@ const ACTION_LABELS: Record<string, string> = {
   user_ban: '利用者を締め出し',
   user_unban: '締め出しを解除',
   user_trust: '信頼度を変更',
+  key_create: '認証キーを発行',
+  key_revoke: '認証キーを無効化',
+  key_redeem: '認証キーを適用',
 }
 
 const when = (iso: string) => formatDateTime(iso).slice(0, 16)
@@ -76,6 +81,7 @@ export function AdminPage() {
       {tab === 'queue' ? <Queue onOpenHistory={openHistory} /> : null}
       {tab === 'history' ? <History key={historyJan} initialJan={historyJan} /> : null}
       {tab === 'banned' ? <Banned onOpenHistory={openHistory} /> : null}
+      {tab === 'keys' ? <Keys /> : null}
       {tab === 'log' ? <Log /> : null}
     </Page>
   )
@@ -314,6 +320,92 @@ function Log() {
                   {typeof l.detail.reason === 'string' && l.detail.reason ? `・理由: ${l.detail.reason}` : ''}
                 </div>
               </div>
+            </div>
+          ))}
+        </Section>
+      )}
+    </>
+  )
+}
+
+function Keys() {
+  const { data, error, run } = useLoad<BypassKey[]>(adminApi.listKeys)
+  const [label, setLabel] = useState('')
+  const [issued, setIssued] = useState<{ key: string; label: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const create = () =>
+    void run(async () => {
+      const key = await adminApi.createKey(label)
+      setIssued({ key, label })
+      setCopied(false)
+      setLabel('')
+    })
+
+  const revoke = (k: BypassKey) => {
+    if (window.confirm(`認証キー「${k.label || '（名前なし）'}」を無効にしますか？このキーで公認になった ${k.users} 人の効果がすぐ外れます。`)) {
+      void run(() => adminApi.revokeKey(k.id))
+    }
+  }
+
+  return (
+    <>
+      <Section
+        title="認証キーを発行"
+        footer="発行したキーを設定画面で入力した利用者は「公認」になり、その人の登録は5人の合意を待たずにすぐ共有マスタに確定します。キーは発行時に一度だけ表示されます（データベースには保存されません）。">
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault()
+            create()
+          }}>
+          <input className="left" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="用途の名前（例: 〇〇サロン用）" maxLength={100} />
+          <button type="submit" className="link-btn bold">
+            発行
+          </button>
+        </form>
+        {issued ? (
+          <div className="row issued-key">
+            <div className="admin-main">
+              <div className="item-meta">{issued.label || '（名前なし）'} のキー（この画面を離れると二度と表示されません）</div>
+              <code>{issued.key}</code>
+            </div>
+            <button
+              type="button"
+              className="mini-btn ok"
+              onClick={() => {
+                navigator.clipboard
+                  ?.writeText(issued.key)
+                  .then(() => setCopied(true))
+                  .catch(() => setCopied(false))
+              }}>
+              {copied ? 'コピー済み' : 'コピー'}
+            </button>
+          </div>
+        ) : null}
+      </Section>
+      <ErrorText message={error} />
+      {data === null ? null : data.length === 0 ? null : (
+        <Section title="発行済みのキー">
+          {data.map((k) => (
+            <div key={k.id} className={`row admin-item${k.active ? '' : ' dim'}`}>
+              <div className="admin-main">
+                <div>
+                  <span className={`tag-kind ${k.active ? 'approved' : 'hidden'}`}>{k.active ? '有効' : '無効'}</span>
+                  <strong>{k.label || '（名前なし）'}</strong>
+                </div>
+                <div className="item-meta">
+                  公認 {k.users}人・発行 {when(k.created_at)}
+                  {k.revoked_at ? `・無効化 ${when(k.revoked_at)}` : ''}
+                </div>
+              </div>
+              {k.active ? (
+                <div className="admin-actions">
+                  <button type="button" className="mini-btn danger" onClick={() => revoke(k)}>
+                    無効にする
+                  </button>
+                </div>
+              ) : null}
             </div>
           ))}
         </Section>

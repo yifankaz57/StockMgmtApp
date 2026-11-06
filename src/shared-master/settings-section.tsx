@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, Text, TextInput } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Button, ErrorText, LabeledRow, Row, Section } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { errorMessage } from '@/lib/inventory';
 import {
+  clearBypassKey,
   getPostPreference,
+  redeemBypassKey,
   sendLoginCode,
   setPostPreference,
   sharedMasterEnabled,
@@ -126,7 +128,7 @@ function Login() {
 
 function LoggedIn({ email }: { email: string }) {
   const { session } = useSharedSession();
-  const { status, error } = useMyStatus(session);
+  const { status, error, reload } = useMyStatus(session);
   const [posting, setPosting] = useState(getPostPreference);
 
   return (
@@ -136,7 +138,15 @@ function LoggedIn({ email }: { email: string }) {
         <>
           <LabeledRow
             label="信頼度"
-            value={status.banned ? '利用停止中' : status.trust === 'trusted' ? '信頼済み（登録がすぐ公開）' : '新しい利用者'}
+            value={
+              status.banned
+                ? '利用停止中'
+                : status.trust === 'authority'
+                  ? '公認（登録がすぐ確定）'
+                  : status.trust === 'trusted'
+                    ? '信頼済み（登録がすぐ公開）'
+                    : '新しい利用者'
+            }
           />
           <LabeledRow label="今日の登録" value={`${status.proposals_today} / ${status.proposal_limit} 件（24時間）`} />
         </>
@@ -153,6 +163,7 @@ function LoggedIn({ email }: { email: string }) {
           trackColor={{ true: Colors.tint }}
         />
       </Row>
+      {status && !status.banned ? <BypassKeyRow authority={status.trust === 'authority'} onChange={reload} /> : null}
       {status?.is_admin ? (
         <Pressable onPress={() => router.navigate('/admin')} style={({ pressed }) => pressed && { backgroundColor: Colors.fill }}>
           <Row>
@@ -183,5 +194,91 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 16, color: Colors.text, textAlign: 'right', paddingVertical: 4 },
   muted: { fontSize: 14, color: Colors.secondaryText, flex: 1, lineHeight: 20 },
   link: { fontSize: 16, color: Colors.tint },
+  keyMessage: { fontSize: 13, color: Colors.success },
 });
 
+
+/** 認証キー: 運営から受け取ったキーを入れると「公認」になり、登録がすぐ共有マスタに確定する */
+function BypassKeyRow({ authority, onChange }: { authority: boolean; onChange: () => void }) {
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  const run = async (fn: () => Promise<string>) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      setMessage({ text: await fn(), error: false });
+      setKey('');
+      onChange();
+    } catch (e) {
+      setMessage({ text: errorMessage(e), error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const messageView = message ? (
+    <Text style={[styles.keyMessage, message.error && { color: Colors.danger }]}>{message.text}</Text>
+  ) : null;
+
+  if (authority) {
+    return (
+      <Row>
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.label, { flex: 1 }]}>認証キー</Text>
+            <Text style={styles.muted}>適用済み（公認）</Text>
+            <Text
+              style={[styles.link, { marginLeft: 12 }]}
+              onPress={() =>
+                Alert.alert('認証キーを外しますか？', '外すと、登録は通常どおり5人の合意が必要になります。', [
+                  { text: 'キャンセル', style: 'cancel' },
+                  {
+                    text: '外す',
+                    style: 'destructive',
+                    onPress: () =>
+                      void run(async () => {
+                        await clearBypassKey();
+                        return '認証キーを外しました。';
+                      }),
+                  },
+                ])
+              }>
+              外す
+            </Text>
+          </View>
+          {messageView}
+        </View>
+      </Row>
+    );
+  }
+
+  return (
+    <Row>
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={styles.label}>認証キー</Text>
+          <TextInput
+            value={key}
+            onChangeText={setKey}
+            placeholder="運営から受け取ったキー"
+            placeholderTextColor="#A0A0A6"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            style={styles.input}
+          />
+          <Text
+            style={[styles.link, { fontWeight: '700' }, (busy || key.trim().length < 8) && { opacity: 0.4 }]}
+            onPress={() => {
+              if (busy || key.trim().length < 8) return;
+              void run(async () => `認証キー「${(await redeemBypassKey(key)) || '（名前なし）'}」を適用しました。登録がすぐ共有マスタに確定します。`);
+            }}>
+            適用
+          </Text>
+        </View>
+        {messageView}
+      </View>
+    </Row>
+  );
+}

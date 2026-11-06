@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { EmptyState, ErrorText, Section, Segmented } from '@/components/ui';
 import { Colors } from '@/constants/theme';
@@ -10,6 +10,7 @@ import {
   useMyStatus,
   useSharedSession,
   type BannedUser,
+  type BypassKey,
   type HistoryItem,
   type LogItem,
   type ModerationAction,
@@ -17,12 +18,13 @@ import {
 } from '@/shared-master/api';
 import { askText, confirmAction } from '@/shared-master/ask';
 
-type Tab = 'queue' | 'history' | 'banned' | 'log';
+type Tab = 'queue' | 'history' | 'banned' | 'keys' | 'log';
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'queue', label: '確認待ち' },
   { value: 'history', label: 'JAN履歴' },
   { value: 'banned', label: '締め出し' },
+  { value: 'keys', label: 'キー' },
   { value: 'log', label: '操作記録' },
 ];
 
@@ -39,6 +41,9 @@ const ACTION_LABELS: Record<string, string> = {
   user_ban: '利用者を締め出し',
   user_unban: '締め出しを解除',
   user_trust: '信頼度を変更',
+  key_create: '認証キーを発行',
+  key_revoke: '認証キーを無効化',
+  key_redeem: '認証キーを適用',
 };
 
 const when = (iso: string) => formatDateTime(iso).slice(0, 16);
@@ -68,6 +73,7 @@ export default function AdminScreen() {
       {tab === 'queue' ? <Queue onOpenHistory={openHistory} /> : null}
       {tab === 'history' ? <History key={historyJan} initialJan={historyJan} /> : null}
       {tab === 'banned' ? <Banned /> : null}
+      {tab === 'keys' ? <Keys /> : null}
       {tab === 'log' ? <Log /> : null}
     </View>
   );
@@ -316,6 +322,84 @@ function Log() {
   );
 }
 
+function Keys() {
+  const { data, error, run, reload, refreshing } = useLoad<BypassKey[]>(adminApi.listKeys);
+  const [label, setLabel] = useState('');
+  const [issued, setIssued] = useState<{ key: string; label: string } | null>(null);
+
+  const create = () =>
+    void run(async () => {
+      const key = await adminApi.createKey(label);
+      setIssued({ key, label });
+      setLabel('');
+    });
+
+  const revoke = async (k: BypassKey) => {
+    if (
+      await confirmAction(
+        `認証キー「${k.label || '（名前なし）'}」を無効にしますか？`,
+        `このキーで公認になった ${k.users} 人の効果がすぐ外れます。`,
+        '無効にする',
+        true,
+      )
+    ) {
+      void run(() => adminApi.revokeKey(k.id));
+    }
+  };
+
+  return (
+    <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} />}>
+      <Section
+        title="認証キーを発行"
+        footer="発行したキーを設定画面で入力した利用者は「公認」になり、その人の登録は5人の合意を待たずにすぐ共有マスタに確定します。キーは発行時に一度だけ表示されます（データベースには保存されません）。">
+        <View style={[styles.item, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+          <TextInput
+            value={label}
+            onChangeText={setLabel}
+            placeholder="用途の名前（例: 〇〇サロン用）"
+            placeholderTextColor="#A0A0A6"
+            maxLength={100}
+            style={[styles.searchInput, { paddingVertical: 4 }]}
+          />
+          <Text style={[styles.link, { fontWeight: '700' }]} onPress={create}>
+            発行
+          </Text>
+        </View>
+        {issued ? (
+          <View style={[styles.item, { backgroundColor: '#EEF4EC' }]}>
+            <Text style={styles.meta}>{issued.label || '（名前なし）'} のキー（この画面を離れると二度と表示されません。長押しでコピー）</Text>
+            <Text selectable style={styles.issuedKey}>
+              {issued.key}
+            </Text>
+          </View>
+        ) : null}
+      </Section>
+      <ErrorText message={error} />
+      {data && data.length > 0 ? (
+        <Section title="発行済みのキー">
+          {data.map((k) => (
+            <Item key={k.id} dim={!k.active}>
+              <View style={styles.titleRow}>
+                <Tag text={k.active ? '有効' : '無効'} kind={k.active ? 'ok' : 'danger'} />
+                <Text style={styles.title}>{k.label || '（名前なし）'}</Text>
+              </View>
+              <Text style={styles.meta}>
+                公認 {k.users}人・発行 {when(k.created_at)}
+                {k.revoked_at ? `・無効化 ${when(k.revoked_at)}` : ''}
+              </Text>
+              {k.active ? (
+                <View style={styles.actions}>
+                  <MiniButton title="無効にする" kind="danger" onPress={() => void revoke(k)} />
+                </View>
+              ) : null}
+            </Item>
+          ))}
+        </Section>
+      ) : null}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
   item: { paddingHorizontal: 16, paddingVertical: 12, gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -340,4 +424,5 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 16, paddingVertical: 9, color: Colors.text },
   link: { color: Colors.tint, fontSize: 16 },
+  issuedKey: { fontSize: 16, fontWeight: '700', letterSpacing: 0.5, color: Colors.text, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }) },
 });
