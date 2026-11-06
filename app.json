@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.example.stockmgmtapp",
+      "bundleIdentifier": "jp.yifankaz57.zaikoscanner",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -19,7 +19,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.example.stockmgmtapp"
+      "package": "jp.yifankaz57.zaikoscanner"
     },
     "plugins": [
       "expo-router",
@@ -28,7 +28,8 @@
         "expo-camera",
         {
           "cameraPermission": "商品のバーコードを読み取るためにカメラを使用します。",
-          "recordAudioAndroid": false
+          "recordAudioAndroid": false,
+          "microphonePermission": false
         }
       ],
       [
