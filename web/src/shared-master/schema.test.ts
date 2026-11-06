@@ -240,4 +240,22 @@ describe('共有マスタ（Supabase）のデータベース', () => {
     expect(await errorOf(u, 'select public.redeem_bypass_key($1)', ['WRONG-x'])).toMatch(/24時間は入力できません/)
     expect(await errorOf(null, 'select public.redeem_bypass_key($1)', ['x'])).toMatch(/permission denied/)
   })
+
+  it('アカウント削除: 本人だけが自分を削除でき、登録・通報・利用者情報も消える。ログインなしでは使えない', async () => {
+    const u = users[3]
+    const before = await db.query<{ n: number }>('select count(*)::int n from public.proposals where user_id = $1', [u])
+    expect(before.rows[0].n).toBeGreaterThan(0)
+    expect(await errorOf(null, 'select public.delete_my_account()')).toMatch(/permission denied/)
+
+    await as(u, 'select public.delete_my_account()')
+
+    const count = async (sql: string) => (await db.query<{ n: number }>(sql, [u])).rows[0].n
+    expect(await count('select count(*)::int n from auth.users where id = $1')).toBe(0)
+    expect(await count('select count(*)::int n from public.proposals where user_id = $1')).toBe(0)
+    expect(await count('select count(*)::int n from public.profiles where user_id = $1')).toBe(0)
+    expect(await count('select count(*)::int n from public.reports where reporter_id = $1')).toBe(0)
+    // ほかの人のアカウントは残る
+    expect((await db.query<{ n: number }>('select count(*)::int n from auth.users')).rows[0].n).toBe(users.length - 1)
+  })
 })
+

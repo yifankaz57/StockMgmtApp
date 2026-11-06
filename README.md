@@ -104,6 +104,23 @@ npx eas-cli@latest build:configure     # 初回のみ（EAS プロジェクト�
 
 > 公開前に `app.json` の `ios.bundleIdentifier` / `android.package`（初期値 `com.example.stockmgmtapp`）を自分固有の値に変更してください。
 
+## App Store 申請の準備
+
+| 項目 | 状態・やること |
+| --- | --- |
+| バンドルID | `jp.yifankaz57.zaikoscanner`（`app.json`。App Store に登録すると変更できない） |
+| 権限 | カメラのみ（説明文は日本語）。使わないマイクの権限は外してある |
+| プライバシーポリシー | `web/public/privacy.html`（公開 URL: https://yifankaz57.github.io/StockMgmtApp/privacy.html）。アプリの「設定」→「このアプリについて」からも開ける。App Store Connect の「プライバシーポリシー URL」にも登録する |
+| サポート・連絡先 | `web/public/support.html`（公開 URL: https://yifankaz57.github.io/StockMgmtApp/support.html）。App Store Connect の「サポート URL」に登録する |
+| アカウント削除 | 「設定」→「共有マスタ」→「アカウントを削除」。Supabase で `supabase/migrations/0004_delete_account.sql` の実行が必要 |
+| 投稿への対策（1.2） | NG ワード・URL の自動チェック、通報、運営の確認待ち一覧、締め出し |
+
+**★ 連絡先（お問い合わせのメールアドレス）は仮の値（`support@example.com`）です。** 公開前に、次の 3 か所を同じ正式なアドレスに差し替えてください（食い違うと `npm test` が失敗して知らせます）。
+
+1. `shared/app-info.ts` の `CONTACT_EMAIL`
+2. `web/public/privacy.html` の `mailto:` とその表示
+3. `web/public/support.html` の `mailto:` とその表示
+
 ## 開発用コマンド
 
 | コマンド | 内容 |

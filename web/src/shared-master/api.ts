@@ -109,6 +109,18 @@ export async function verifyLoginCode(email: string, code: string): Promise<void
   if (error) throw new Error(toMessage(error))
 }
 
+/**
+ * 自分のアカウントを削除する（メールアドレス・登録・通報も消える。元に戻せない）。
+ * 削除後はこの端末のログイン状態も消す。端末内の在庫データは消えない。
+ */
+export async function deleteMyAccount(): Promise<void> {
+  await rpc<void>('delete_my_account')
+  const client = await sb()
+  // アカウントはもう無いので、サーバーへの通知は不要。この端末のログイン情報だけ消す
+  await client.auth.signOut({ scope: 'local' }).catch(() => {})
+  setSession({ ready: true, session: null })
+}
+
 export async function signOut(): Promise<void> {
   const { error } = await (await sb()).auth.signOut()
   if (error) throw new Error(toMessage(error))

@@ -314,3 +314,6 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .issued-key { background: #eef4ec; }
 .issued-key code { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; word-break: break-all; user-select: all; }
 .issued-key .item-meta { white-space: normal; }
+
+.link-row { text-decoration: none; color: inherit; }
+.link-row .row-value { display: inline-flex; justify-content: flex-end; align-items: center; color: var(--tint); }

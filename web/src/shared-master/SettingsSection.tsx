@@ -5,6 +5,7 @@ import { ErrorText, Section } from '@/components/ui'
 import { navigate } from '@/router'
 import {
   clearBypassKey,
+  deleteMyAccount,
   getPostPreference,
   redeemBypassKey,
   sendLoginCode,
@@ -184,6 +185,22 @@ function LoggedIn({ email }: { email: string }) {
             }
           }}>
           ログアウト
+        </button>
+      </div>
+      <div className="row">
+        <button
+          type="button"
+          className="btn danger"
+          onClick={() => {
+            const ok = window.confirm(
+              'アカウントを削除しますか？\n\nメールアドレスと、あなたが共有マスタに登録した商品名・通報がすべて削除され、元に戻せません。\n（この端末の在庫データは消えません）',
+            )
+            if (!ok) return
+            deleteMyAccount()
+              .then(() => alert('アカウントを削除しました。'))
+              .catch((e) => alert(`アカウントを削除できませんでした: ${errorMessage(e)}`))
+          }}>
+          アカウントを削除
         </button>
       </div>
     </>

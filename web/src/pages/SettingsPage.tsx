@@ -5,6 +5,7 @@ import { Page, Section } from '@/components/ui'
 import { getUsageResetDay, setUsageResetDay } from '@/db/database'
 import { useDataVersion } from '@/db/events'
 import { SharedMasterSettings } from '@/shared-master/SettingsSection'
+import { AboutSection } from './AboutSection'
 import { StockAlertSettingsSection } from './StockAlertSettings'
 
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
@@ -56,6 +57,7 @@ export function SettingsPage() {
       </Section>
       <StockAlertSettingsSection />
       <SharedMasterSettings />
+      <AboutSection />
     </Page>
   )
 }
