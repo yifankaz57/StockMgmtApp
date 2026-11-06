@@ -241,21 +241,39 @@ describe('共有マスタ（Supabase）のデータベース', () => {
     expect(await errorOf(null, 'select public.redeem_bypass_key($1)', ['x'])).toMatch(/permission denied/)
   })
 
-  it('アカウント削除: 本人だけが自分を削除でき、登録・通報・利用者情報も消える。ログインなしでは使えない', async () => {
+  it('アカウント削除: アカウント・利用者情報・通報は消え、登録は匿名化して残る（合意の人数は変わらない）', async () => {
     const u = users[3]
-    const before = await db.query<{ n: number }>('select count(*)::int n from public.proposals where user_id = $1', [u])
-    expect(before.rows[0].n).toBeGreaterThan(0)
+    const confirmedBefore = (await candidates(null, JAN_A)).find((c) => c.name === 'お茶 500ml')
+    expect(confirmedBefore).toMatchObject({ confirmed: true })
+    await as(u, 'select public.report_candidate($1, $2, $3)', [JAN_A, '緑茶500ml', '確認用'])
     expect(await errorOf(null, 'select public.delete_my_account()')).toMatch(/permission denied/)
 
     await as(u, 'select public.delete_my_account()')
 
-    const count = async (sql: string) => (await db.query<{ n: number }>(sql, [u])).rows[0].n
+    const count = async (sql: string, params: unknown[] = [u]) => (await db.query<{ n: number }>(sql, params)).rows[0].n
     expect(await count('select count(*)::int n from auth.users where id = $1')).toBe(0)
-    expect(await count('select count(*)::int n from public.proposals where user_id = $1')).toBe(0)
     expect(await count('select count(*)::int n from public.profiles where user_id = $1')).toBe(0)
     expect(await count('select count(*)::int n from public.reports where reporter_id = $1')).toBe(0)
+    // 登録は元の利用者とは結び付かない形で残る
+    expect(await count('select count(*)::int n from public.proposals where user_id = $1')).toBe(0)
+    expect(await count('select count(*)::int n from public.proposals where anonymized', [])).toBeGreaterThan(0)
+    // 合意の人数・確定はそのまま
+    const after = (await candidates(null, JAN_A)).find((c) => c.name === 'お茶 500ml')
+    expect(after).toMatchObject({ supporters: confirmedBefore?.supporters, confirmed: true })
+    // 運営の履歴では、退会した人はメールアドレスなし。締め出しなどの操作はできない
+    const history = await as<{ user_email: string | null; user_id: string; name: string }>(ADMIN, 'select * from public.admin_jan_history($1)', [JAN_A])
+    const anon = history.find((h) => h.user_email === null)
+    expect(anon).toBeTruthy()
+    expect(await errorOf(ADMIN, 'select public.admin_set_banned($1, true)', [anon?.user_id])).toMatch(/退会した利用者/)
     // ほかの人のアカウントは残る
     expect((await db.query<{ n: number }>('select count(*)::int n from auth.users')).rows[0].n).toBe(users.length - 1)
   })
-})
 
+  it('アカウント削除: 信頼済みの人が1人だけで登録していた候補も、退会後に公開が続く', async () => {
+    const u = users[5] // 自動で信頼済みになった利用者（「1人だけの提案」を登録済み）
+    const solo = jan('493000000009')
+    expect((await candidates(null, solo)).map((c) => c.name)).toEqual(['1人だけの提案'])
+    await as(u, 'select public.delete_my_account()')
+    expect((await candidates(null, solo)).map((c) => [c.name, c.supporters])).toEqual([['1人だけの提案', 1]])
+  })
+})

@@ -224,7 +224,7 @@ function History({ initialJan }: { initialJan: string }) {
                   {when(item.created_at)}
                 </div>
                 <div className="item-meta">
-                  {item.user_email ?? item.user_id}
+                  {item.user_email ?? '（退会した利用者）'}
                   {item.user_trusted ? '・信頼済み' : ''}
                   {item.user_banned ? '・締め出し中' : ''}
                 </div>
@@ -246,12 +246,16 @@ function History({ initialJan }: { initialJan: string }) {
                     </button>
                   </>
                 )}
-                <button type="button" className="mini-btn" onClick={() => trust(item)}>
-                  {item.user_trusted ? '信頼を外す' : '信頼する'}
-                </button>
-                <button type="button" className={`mini-btn${item.user_banned ? '' : ' danger'}`} onClick={() => ban(item)}>
-                  {item.user_banned ? '解除' : '締め出す'}
-                </button>
+                {item.user_email !== null ? (
+                  <>
+                    <button type="button" className="mini-btn" onClick={() => trust(item)}>
+                      {item.user_trusted ? '信頼を外す' : '信頼する'}
+                    </button>
+                    <button type="button" className={`mini-btn${item.user_banned ? '' : ' danger'}`} onClick={() => ban(item)}>
+                      {item.user_banned ? '解除' : '締め出す'}
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
           ))}

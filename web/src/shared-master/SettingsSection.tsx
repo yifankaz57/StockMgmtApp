@@ -193,7 +193,7 @@ function LoggedIn({ email }: { email: string }) {
           className="btn danger"
           onClick={() => {
             const ok = window.confirm(
-              'アカウントを削除しますか？\n\nメールアドレスと、あなたが共有マスタに登録した商品名・通報がすべて削除され、元に戻せません。\n（この端末の在庫データは消えません）',
+              'アカウントを削除しますか？\n\nメールアドレスと通報が削除され、元に戻せません。\n共有マスタに登録した商品名は、ほかの利用者との合意を保つため、あなたと結び付かない形（退会した利用者）で残ります。\n（この端末の在庫データは消えません）',
             )
             if (!ok) return
             deleteMyAccount()

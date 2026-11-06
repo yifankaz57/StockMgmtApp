@@ -112,7 +112,7 @@ npx eas-cli@latest build:configure     # 初回のみ（EAS プロジェクト�
 | 権限 | カメラのみ（説明文は日本語）。使わないマイクの権限は外してある |
 | プライバシーポリシー | `web/public/privacy.html`（公開 URL: https://yifankaz57.github.io/StockMgmtApp/privacy.html）。アプリの「設定」→「このアプリについて」からも開ける。App Store Connect の「プライバシーポリシー URL」にも登録する |
 | サポート・連絡先 | `web/public/support.html`（公開 URL: https://yifankaz57.github.io/StockMgmtApp/support.html）。App Store Connect の「サポート URL」に登録する |
-| アカウント削除 | 「設定」→「共有マスタ」→「アカウントを削除」。Supabase で `supabase/migrations/0004_delete_account.sql` の実行が必要 |
+| アカウント削除 | 「設定」→「共有マスタ」→「アカウントを削除」。メールアドレス・通報は削除し、登録した商品名は匿名化して残す（合意の人数を保つため）。Supabase で `supabase/migrations/0004_delete_account.sql` と `0005_anonymize_on_delete.sql` の実行が必要 |
 | 投稿への対策（1.2） | NG ワード・URL の自動チェック、通報、運営の確認待ち一覧、締め出し |
 
 **★ 連絡先（お問い合わせのメールアドレス）は仮の値（`support@example.com`）です。** 公開前に、次の 3 か所を同じ正式なアドレスに差し替えてください（食い違うと `npm test` が失敗して知らせます）。
