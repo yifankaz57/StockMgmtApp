@@ -9,10 +9,11 @@ import {
   type PeriodUsage,
   type Product,
 } from '@shared/inventory'
+import { STOCK_ALERT_LABELS, stockAlertColor, type StockAlertSettings } from '@shared/stock-alert'
 import { Icon } from '@/components/Icon'
 import { ProductRow } from '@/components/rows'
 import { EmptyState, IconButton, Page, Segmented } from '@/components/ui'
-import { getUsageResetDay, listProducts, setProductAvailable, usageByAllPeriods } from '@/db/database'
+import { getStockAlerts, getUsageResetDay, listProducts, setProductAvailable, usageByAllPeriods } from '@/db/database'
 import { useDataVersion } from '@/db/events'
 import { shareCsv, timestampForFileName } from '@/lib/share'
 import { navigate } from '@/router'
@@ -40,9 +41,10 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [query, setQuery] = useState('')
   const [lowOnly, setLowOnly] = useState(false)
+  const [alerts, setAlerts] = useState<StockAlertSettings | null>(null)
   const [sort, setSort] = useState<SortKey>(loadSort)
   // 消費量順のとき: 集計期間（設定タブのリセット日から計算）と商品ごとの消費量
-  // periods: 月ごとの消費量（新しい順。先頭が今期）。並べ替えには今期、CSV には全期間を使う
+  // periods: 月ごとの消費量（新しい順。先頭が今月）。並べ替えには今月、CSV には全期間を使う
   const [usage, setUsage] = useState<{ totals: Map<number, number>; periodLabel: string; resetDay: number; periods: PeriodUsage[] } | null>(null)
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function ProductsPage() {
     }
   }, [sort])
 
-  // 今期の消費量は、並べ替えと CSV 出力の両方で使うので常に読み込んでおく
+  // 今月の消費量は、並べ替えと CSV 出力の両方で使うので常に読み込んでおく
   // （CSV 出力のタップ時に読み込むと、iPhone で共有シートが開かないことがあるため）
   useEffect(() => {
     const request = { active: true }
@@ -66,6 +68,12 @@ export function ProductsPage() {
     return () => {
       request.active = false
     }
+  }, [version])
+
+  useEffect(() => {
+    getStockAlerts()
+      .then(setAlerts)
+      .catch(() => {})
   }, [version])
 
   useEffect(() => {
@@ -130,7 +138,7 @@ export function ProductsPage() {
         <Segmented options={SORT_OPTIONS} value={sort} onChange={setSort} />
         {sortingByUsage ? (
           <div className="period">
-            集計期間 {usage.periodLabel}（毎月{usage.resetDay}日にリセット。
+            今月の集計期間 {usage.periodLabel}（毎月{usage.resetDay}日にリセット。
             <button type="button" className="inline-link" onClick={() => navigate('/settings', undefined, { replace: true })}>
               設定で変更
             </button>
@@ -144,6 +152,18 @@ export function ProductsPage() {
         </button>
         <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{filtered.length} 件</span>
       </div>
+      {alerts && (alerts.caution.threshold !== null || alerts.warning.threshold !== null) ? (
+        <div className="alert-legend">
+          {(['caution', 'warning'] as const).map((key) =>
+            alerts[key].threshold !== null ? (
+              <span key={key}>
+                <i style={{ background: alerts[key].color }} />
+                {STOCK_ALERT_LABELS[key]}: {alerts[key].threshold}個未満
+              </span>
+            ) : null,
+          )}
+        </div>
+      ) : null}
       {filtered.length > 0 ? (
         <div className="list">
           {filtered.map((p) => (
@@ -152,6 +172,7 @@ export function ProductsPage() {
               product={p}
               onClick={() => navigate(`/product/${p.id}`)}
               onToggleAvailable={(available) => toggleAvailable(p, available)}
+              background={alerts ? stockAlertColor(p.quantity, alerts) : null}
               usage={sortingByUsage ? usage.totals.get(p.id) ?? 0 : undefined}
             />
           ))}

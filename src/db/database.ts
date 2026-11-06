@@ -13,6 +13,7 @@ import {
   type StockTransaction,
   type TransactionKind,
 } from '@/lib/inventory';
+import { normalizeStockAlerts, validateStockAlerts, type StockAlertSettings } from '@/lib/stock-alert';
 import { notifyDataChanged } from './events';
 
 export const DATABASE_NAME = 'stock.db';
@@ -337,5 +338,26 @@ export async function getUsageResetDay(db: SQLiteDatabase): Promise<number> {
 
 export async function setUsageResetDay(db: SQLiteDatabase, day: number): Promise<void> {
   await setSetting(db, USAGE_RESET_DAY_KEY, String(normalizeResetDay(day)));
+  notifyDataChanged();
+}
+
+const STOCK_ALERTS_KEY = 'stockAlerts';
+
+/** 在庫の色分け（注意・警告の数と色）。初期設定は未設定 */
+export async function getStockAlerts(db: SQLiteDatabase): Promise<StockAlertSettings> {
+  const raw = await getSetting(db, STOCK_ALERTS_KEY);
+  try {
+    return normalizeStockAlerts(raw ? JSON.parse(raw) : null);
+  } catch {
+    return normalizeStockAlerts(null);
+  }
+}
+
+/** 在庫の色分けを保存する。矛盾があれば InventoryError */
+export async function setStockAlerts(db: SQLiteDatabase, settings: StockAlertSettings): Promise<void> {
+  const value = normalizeStockAlerts(settings);
+  const problem = validateStockAlerts(value);
+  if (problem) throw new InventoryError('invalidAmount', problem);
+  await setSetting(db, STOCK_ALERTS_KEY, JSON.stringify(value));
   notifyDataChanged();
 }

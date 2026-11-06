@@ -9,6 +9,7 @@ export function ProductRow({
   onClick,
   onToggleAvailable,
   usage,
+  background,
 }: {
   product: Product
   onClick: () => void
@@ -16,10 +17,14 @@ export function ProductRow({
   onToggleAvailable?: (available: boolean) => void
   /** 消費量順のときに表示する、集計期間内の消費量 */
   usage?: number
+  /** 在庫の色分け（設定タブ）で当てはまったときの背景色 */
+  background?: string | null
 }) {
   const sub = productSubtitle(product)
   return (
-    <div className={`list-row${product.available ? '' : ' unavailable'}`}>
+    <div
+      className={`list-row${product.available ? '' : ' unavailable'}${background ? ' tinted' : ''}`}
+      style={background ? { background } : undefined}>
       {onToggleAvailable ? <AvailabilityToggle available={product.available} onChange={onToggleAvailable} /> : null}
       <button type="button" className="list-item" onClick={onClick}>
         <div className="item-main">
@@ -33,7 +38,7 @@ export function ProductRow({
             {product.location ? `　📍${product.location}` : ''}
           </div>
           {usage !== undefined ? (
-            <div className={`item-usage${usage > 0 ? '' : ' zero'}`}>今期の消費 {usage} 個</div>
+            <div className={`item-usage${usage > 0 ? '' : ' zero'}`}>今月の消費 {usage} 個</div>
           ) : null}
         </div>
         <QuantityBadge product={product} />

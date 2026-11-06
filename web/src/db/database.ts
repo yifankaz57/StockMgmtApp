@@ -14,6 +14,7 @@ import {
   type StockTransaction,
   type TransactionKind,
 } from '@shared/inventory'
+import { normalizeStockAlerts, validateStockAlerts, type StockAlertSettings } from '@shared/stock-alert'
 import { notifyDataChanged } from './events'
 
 // ブラウザ内の IndexedDB に保存する（端末・ブラウザごとのデータ）
@@ -292,4 +293,22 @@ export async function setUsageResetDay(day: number): Promise<void> {
 export async function usageByAllPeriods(resetDay: number, now: Date = new Date()): Promise<PeriodUsage[]> {
   const db = await getDb()
   return usageByPeriod(await db.getAll('transactions'), resetDay, now)
+}
+
+const STOCK_ALERTS_KEY = 'stockAlerts'
+
+/** 在庫の色分け（注意・警告の数と色）。初期設定は未設定 */
+export async function getStockAlerts(): Promise<StockAlertSettings> {
+  const db = await getDb()
+  return normalizeStockAlerts(await db.get('settings', STOCK_ALERTS_KEY))
+}
+
+/** 在庫の色分けを保存する。矛盾があれば InventoryError */
+export async function setStockAlerts(settings: StockAlertSettings): Promise<void> {
+  const value = normalizeStockAlerts(settings)
+  const problem = validateStockAlerts(value)
+  if (problem) throw new InventoryError('invalidAmount', problem)
+  const db = await getDb()
+  await db.put('settings', value, STOCK_ALERTS_KEY)
+  notifyDataChanged()
 }
