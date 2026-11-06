@@ -3,9 +3,12 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
-import { formatShadeVolume, type Product } from '@/lib/inventory';
+import { formatShadeVolume, needsUsageConfirmation, type Product } from '@/lib/inventory';
 
-/** 1日に2個目以降を使うときの大きな確認画面 */
+/**
+ * スキャンで1個消費する前の大きな確認画面。
+ * その日の1個目は落ち着いた色、同じ商品の2個目以降はオレンジの警告で出す
+ */
 export function UsageConfirmModal({
   product,
   usedToday,
@@ -19,13 +22,15 @@ export function UsageConfirmModal({
   onCancel: () => void;
 }) {
   const detail = product ? [product.manufacturer, formatShadeVolume(product)].filter(Boolean).join('　') : '';
+  const repeated = needsUsageConfirmation(usedToday);
+  const color = repeated ? Colors.warning : Colors.tint;
   return (
     <Modal visible={product !== null} animationType="fade" presentationStyle="fullScreen" onRequestClose={onCancel}>
       {product ? (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: color }]}>
           <View style={styles.body}>
-            <Ionicons name="warning" size={72} color="#fff" />
-            <Text style={styles.title}>本日{usedToday + 1}個目の使用です</Text>
+            <Ionicons name={repeated ? 'warning' : 'water-outline'} size={72} color="#fff" />
+            <Text style={styles.title}>{repeated ? `本日${usedToday + 1}個目の使用です` : '1個消費しますか？'}</Text>
             <View style={styles.productBox}>
               {detail ? <Text style={styles.detail}>{detail}</Text> : null}
               <Text style={styles.productName} numberOfLines={3}>
@@ -33,7 +38,7 @@ export function UsageConfirmModal({
               </Text>
             </View>
             <Text style={styles.message}>
-              今日すでに {usedToday} 個使っています。{'\n'}在庫から 1 個減らしてよいですか？
+              {repeated ? `今日すでに ${usedToday} 個使っています。\n` : ''}在庫から 1 個減らしてよいですか？
             </Text>
             <Text style={styles.stock}>
               在庫 {product.quantity} → {product.quantity - 1}
@@ -44,7 +49,7 @@ export function UsageConfirmModal({
               accessibilityRole="button"
               onPress={onConfirm}
               style={({ pressed }) => [styles.button, styles.confirm, pressed && { opacity: 0.8 }]}>
-              <Text style={[styles.buttonText, { color: Colors.warning }]}>減らす（使用する）</Text>
+              <Text style={[styles.buttonText, { color }]}>減らす（使用する）</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -60,7 +65,7 @@ export function UsageConfirmModal({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.warning },
+  container: { flex: 1 },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
   title: { fontSize: 34, fontWeight: '900', color: '#fff', textAlign: 'center' },
   productBox: { alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 20, padding: 20, gap: 6 },

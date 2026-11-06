@@ -5,12 +5,10 @@ import { describe, it } from 'node:test';
 
 import {
   buildSuggestions,
-  cleanProductName,
   extractApiErrorMessage,
   isValidJan,
   normalizeJan,
   parseOpenFoodFacts,
-  parseYahooShopping,
   rankSuggestions,
 } from './jan.ts';
 
@@ -30,12 +28,6 @@ describe('isValidJan', () => {
 
   it('UPC-A は先頭 0 を補う', () => {
     assert.equal(normalizeJan('012345678905'), '0012345678905');
-  });
-});
-
-describe('cleanProductName', () => {
-  it('隅付き括弧や宣伝文句を除去し全角英数を半角にする', () => {
-    assert.equal(cleanProductName('【送料無料】【あす楽】 ボールペン　ＢＬＡＣＫ 0.5mm ★お買い得★'), 'ボールペン BLACK 0.5mm');
   });
 });
 
@@ -63,34 +55,8 @@ describe('parseOpenFoodFacts', () => {
   });
 });
 
-describe('parseYahooShopping', () => {
-  it('商品名を整形し、ブランド名をメーカー候補にする。JAN 不一致は除外', () => {
-    const hits = parseYahooShopping(
-      {
-        hits: [
-          { name: '【送料無料】お茶 500ml', brand: { name: 'A飲料' }, janCode: '4901234567894' },
-          { name: 'お茶 500ml', brand: { name: 'A飲料' }, janCode: '4901234567894' },
-          { name: '別の商品', brand: { name: 'Z社' }, janCode: '4909999999999' },
-          { name: 'お茶 500ml 24本', janCode: '' },
-          'broken',
-        ],
-      },
-      '4901234567894',
-    );
-    const s = buildSuggestions(hits);
-    assert.equal(s.names[0].value, 'お茶 500ml');
-    assert.equal(s.names[0].count, 2);
-    assert.deepEqual(s.manufacturers.map((m) => m.value), ['A飲料']);
-    assert.deepEqual(s.sources, ['Yahoo!ショッピング']);
-  });
-
-  it('hits が無い応答は空', () => {
-    assert.deepEqual(parseYahooShopping({ Error: { Message: 'invalid appid' } }, '4901234567894'), []);
-  });
-});
-
 describe('extractApiErrorMessage', () => {
-  it('Yahoo 形式・一般的な形式・文字列からメッセージを取り出す', () => {
+  it('Error.Message 形式・error.message 形式・文字列からメッセージを取り出す', () => {
     assert.equal(extractApiErrorMessage({ Error: { Message: 'Your Request is invalid.' } }), 'Your Request is invalid.');
     assert.equal(extractApiErrorMessage({ error: { message: 'forbidden' } }), 'forbidden');
     assert.equal(extractApiErrorMessage('Bad Request'), 'Bad Request');

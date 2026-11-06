@@ -1,6 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
 
-import { errorMessage, isLowStock, needsUsageConfirmation, type Product } from '@shared/inventory'
+import {
+  errorMessage,
+  IN_STORE_CODE_MESSAGE,
+  isInStoreCode,
+  isLowStock,
+  needsUsageConfirmation,
+  type Product,
+} from '@shared/inventory'
 import { Icon } from '@/components/Icon'
 import { ManualEntry } from '@/components/ManualEntry'
 import { productSubtitle } from '@/lib/display'
@@ -51,6 +58,11 @@ export function ScanPage() {
       try {
         const product = await findProductByBarcode(code)
         if (!product) {
+          if (isInStoreCode(code)) {
+            feedback.error()
+            setResult({ type: 'error', title: '店内コードは登録できません', message: `バーコード: ${code}\n${IN_STORE_CODE_MESSAGE}` })
+            return
+          }
           feedback.warning()
           navigate('/product/new', { barcode: code })
           return
@@ -69,13 +81,11 @@ export function ScanPage() {
           setResult({ type: 'error', title: '在庫がありません', message: `${product.name}\n在庫が 0 のため減らせません。` })
           return
         }
+        // 消費する前に必ず大きな確認画面を出す（同じ日の2個目以降は警告色）
         const usedToday = await countUsageToday(product.id)
-        if (needsUsageConfirmation(usedToday)) {
-          feedback.warning()
-          setPending({ product, usedToday })
-          return
-        }
-        await consumeOne(product, usedToday)
+        if (needsUsageConfirmation(usedToday)) feedback.warning()
+        else feedback.success()
+        setPending({ product, usedToday })
       } catch (e) {
         feedback.error()
         setResult({ type: 'error', title: 'エラー', message: errorMessage(e) })
@@ -83,7 +93,7 @@ export function ScanPage() {
         busy.current = false
       }
     },
-    [consumeOne, setResult],
+    [setResult],
   )
 
   const confirm = async () => {

@@ -4,7 +4,6 @@ import {
   isValidJan,
   normalizeJan,
   parseOpenFoodFacts,
-  parseYahooShopping,
   type LookupHit,
   type ProductSuggestions,
 } from '@shared/jan'
@@ -12,9 +11,6 @@ import {
 // JAN コードから商品名・メーカー名の候補を検索する（ブラウザ版）
 
 const TIMEOUT_MS = 8000
-
-/** ビルド時に VITE_YAHOO_APP_ID を設定すると Yahoo!ショッピングも検索する（任意） */
-const YAHOO_APP_ID = (import.meta.env.VITE_YAHOO_APP_ID ?? '').trim()
 
 export type SourceStatus = {
   source: string
@@ -62,18 +58,6 @@ const SOURCES: Source[] = [
           signal,
         ),
       ),
-  },
-  {
-    name: 'Yahoo!ショッピング',
-    enabled: YAHOO_APP_ID.length > 0,
-    disabledReason: '未設定',
-    search: async (jan, signal) => {
-      const params = new URLSearchParams({ appid: YAHOO_APP_ID, jan_code: jan, results: '20' })
-      return parseYahooShopping(
-        await fetchJson(`https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?${params.toString()}`, signal),
-        jan,
-      )
-    },
   },
 ]
 

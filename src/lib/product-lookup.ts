@@ -4,20 +4,11 @@ import {
   isValidJan,
   normalizeJan,
   parseOpenFoodFacts,
-  parseYahooShopping,
   type LookupHit,
   type ProductSuggestions,
 } from './jan';
 
 const TIMEOUT_MS = 8000;
-
-/**
- * Yahoo!デベロッパーネットワークの Client ID（アプリケーションID）。
- * `.env.local` に EXPO_PUBLIC_YAHOO_APP_ID=... を書くと有効になる（未設定なら Yahoo は使わない）
- */
-const YAHOO_APP_ID = (process.env.EXPO_PUBLIC_YAHOO_APP_ID ?? '').trim();
-
-export const isYahooLookupEnabled = YAHOO_APP_ID.length > 0;
 
 /** 情報源ごとの検索結果（候補が出ない理由を画面に表示するため） */
 export type SourceStatus = {
@@ -68,16 +59,6 @@ const SOURCES: Source[] = [
           { 'User-Agent': 'StockMgmtApp/1.0' },
         ),
       ),
-  },
-  {
-    name: 'Yahoo!ショッピング',
-    enabled: isYahooLookupEnabled,
-    disabledReason: '未設定（.env.local に EXPO_PUBLIC_YAHOO_APP_ID を設定）',
-    search: async (jan, signal) => {
-      const params = new URLSearchParams({ appid: YAHOO_APP_ID, jan_code: jan, results: '20' });
-      const url = `https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?${params.toString()}`;
-      return parseYahooShopping(await fetchJson(url, signal), jan);
-    },
   },
 ];
 

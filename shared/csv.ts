@@ -1,4 +1,4 @@
-import { stockValue, type Product, type StockTransaction } from './inventory.ts';
+import { formatUsagePeriodWithYear, stockValue, type PeriodUsage, type Product, type StockTransaction } from './inventory.ts';
 
 const KIND_LABELS_FOR_CSV: Record<StockTransaction['kind'], string> = {
   initial: '初期登録',
@@ -31,9 +31,18 @@ export function formatDateTime(iso: string): string {
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-export function productsToCsv(products: Product[]): string {
+/**
+ * 在庫一覧の CSV。
+ * periods（usageByPeriod の結果。新しい順）を渡すと、「在庫数」の右に期間ごとの消費数の列を加える
+ * （例: 消費数（2026/11/1〜11/30）, 消費数（2026/10/1〜10/31）, …）
+ */
+export function productsToCsv(products: Product[], periods: PeriodUsage[] = []): string {
   return toCsv([
-    ['バーコード', 'メーカー', '商品名', '色番号', '容量', '利用', '在庫数', '仕入れ値', '在庫金額', '最低在庫数', '保管場所', 'メモ', '更新日時'],
+    [
+      'バーコード', 'メーカー', '商品名', '色番号', '容量', '利用', '在庫数',
+      ...periods.map((p) => `消費数（${formatUsagePeriodWithYear(p)}）`),
+      '仕入れ値', '在庫金額', '最低在庫数', '保管場所', 'メモ', '更新日時',
+    ],
     ...products.map((p) => [
       p.barcode,
       p.manufacturer,
@@ -42,6 +51,7 @@ export function productsToCsv(products: Product[]): string {
       p.volume,
       p.available ? '可' : '不可',
       p.quantity,
+      ...periods.map((period) => period.totals.get(p.id) ?? 0),
       p.purchasePrice ?? '',
       stockValue(p) ?? '',
       p.minQuantity,

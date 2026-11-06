@@ -10,17 +10,21 @@ import {
   isLowStock,
   needsUsageConfirmation,
   startOfLocalDayIso,
+  containsUrl,
+  findNgWord,
   formatYen,
+  isInStoreCode,
   normalizeProductInput,
   parsePrice,
   parseQuantity,
   formatUsagePeriod,
+  formatUsagePeriodWithYear,
   normalizeResetDay,
   sortByUsage,
+  usageByPeriod,
   usagePeriod,
   stockValue,
   sumUsageByProduct,
-  totalStockValue,
 } from './inventory.ts';
 
 describe('calculateStock', () => {
@@ -128,17 +132,6 @@ describe('formatYen / stockValue', () => {
   it('在庫金額 = 仕入れ値 × 在庫数（未登録なら null）', () => {
     assert.equal(stockValue({ purchasePrice: 0.1, quantity: 3 }), 0.3);
     assert.equal(stockValue({ purchasePrice: null, quantity: 3 }), null);
-  });
-
-  it('合計は仕入れ値のある商品だけを足し、未登録の数を返す', () => {
-    assert.deepEqual(
-      totalStockValue([
-        { purchasePrice: 1000, quantity: 2 },
-        { purchasePrice: null, quantity: 5 },
-        { purchasePrice: 250, quantity: 0 },
-      ]),
-      { total: 2000, unpricedCount: 1 },
-    );
   });
 });
 
@@ -252,5 +245,89 @@ describe('消費量の集計期間（毎月のリセット日）', () => {
   it('設定値の検証', () => {
     assert.equal(normalizeResetDay(15), 15);
     for (const v of [0, 32, 1.5, '5', null, undefined]) assert.equal(normalizeResetDay(v), 1);
+  });
+});
+
+describe('入力時の機械的なチェック', () => {
+  const base = { barcode: '4901234567894', name: 'カラー剤 8-NB', manufacturer: '', shade: '', volume: '', purchasePrice: null, minQuantity: 0, location: '', note: '' };
+  const code = (fn: () => unknown) => {
+    try {
+      fn();
+      return 'ok';
+    } catch (e) {
+      return e instanceof InventoryError ? e.code : 'other';
+    }
+  };
+
+  it('店内コード（先頭20〜29の13桁）を判定', () => {
+    assert.equal(isInStoreCode('2000000000015'), true);
+    assert.equal(isInStoreCode('2912345678901'), true);
+    assert.equal(isInStoreCode('4901234567894'), false);
+    assert.equal(isInStoreCode('20123456'), false); // 8桁は対象外
+    assert.equal(isInStoreCode('ABC-2000000000015'), false);
+  });
+
+  it('新規登録では店内コードを拒否、編集でバーコードを変えていなければ許可', () => {
+    assert.equal(code(() => normalizeProductInput({ ...base, barcode: '2000000000015' })), 'inStoreCode');
+    assert.equal(code(() => normalizeProductInput({ ...base, barcode: '2000000000015' }, { previousBarcode: '2000000000015' })), 'ok');
+    assert.equal(code(() => normalizeProductInput({ ...base, barcode: '2000000000015' }, { previousBarcode: '4901234567894' })), 'inStoreCode');
+  });
+
+  it('商品名は100文字、メーカーは50文字まで（絵文字も1文字）', () => {
+    assert.equal(code(() => normalizeProductInput({ ...base, name: 'あ'.repeat(100) })), 'ok');
+    assert.equal(code(() => normalizeProductInput({ ...base, name: 'あ'.repeat(101) })), 'textTooLong');
+    assert.equal(code(() => normalizeProductInput({ ...base, name: '😀'.repeat(100) })), 'ok');
+    assert.equal(code(() => normalizeProductInput({ ...base, manufacturer: 'a'.repeat(51) })), 'textTooLong');
+  });
+
+  it('URL・ドメイン名は不可（全角も検出）。容量や色番号の「.」は誤検知しない', () => {
+    for (const t of ['https://example.com', 'www.example.jp', '詳しくは example.com へ', 'ｈｔｔｐｓ：／／ａ.ｊｐ', 'shop.co.jp']) {
+      assert.equal(containsUrl(t), true, t);
+    }
+    for (const t of ['カラー剤 8.0 80g', 'Vol.2 シャンプー 1.5L', 'No.7 トリートメント']) {
+      assert.equal(containsUrl(t), false, t);
+    }
+    assert.equal(code(() => normalizeProductInput({ ...base, name: '激安 https://spam.example' })), 'urlNotAllowed');
+  });
+
+  it('NG ワードは全角半角・大文字小文字・空白を無視して検出', () => {
+    assert.equal(findNgWord('簡単に 稼 げ る 副業'), '副業');
+    assert.equal(findNgWord('ＬＩＮＥ追加はこちら'), 'line追加');
+    assert.equal(findNgWord('カラー剤 8-NB 80g'), undefined);
+    assert.equal(code(() => normalizeProductInput({ ...base, manufacturer: '高収入バイト' })), 'ngWord');
+  });
+});
+
+describe('月ごとの消費量（usageByPeriod）', () => {
+  const at = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).toISOString();
+  const tx = (productId: number, kind: 'use' | 'stockOut' | 'stockIn' | 'adjustment', delta: number, createdAt: string) => ({ productId, kind, delta, createdAt });
+  const now = new Date(2026, 10, 4, 15);
+
+  it('記録のある最も古い月から今月まで、新しい順。間の月も空で含む', () => {
+    const periods = usageByPeriod(
+      [
+        tx(1, 'use', -1, at(2026, 11, 2)),
+        tx(1, 'stockOut', -3, at(2026, 11, 3)),
+        tx(2, 'use', -1, at(2026, 8, 20)),
+        tx(2, 'stockIn', 10, at(2026, 5, 1)), // 入庫は消費に含めない（期間の範囲にも影響しない）
+        tx(1, 'adjustment', -2, at(2026, 9, 1)),
+      ],
+      1,
+      now,
+    );
+    assert.deepEqual(periods.map(formatUsagePeriodWithYear), ['2026/11/1〜11/30', '2026/10/1〜10/31', '2026/9/1〜9/30', '2026/8/1〜8/31']);
+    assert.deepEqual([...periods[0].totals], [[1, 4]]);
+    assert.equal(periods[1].totals.size, 0);
+    assert.deepEqual([...periods[3].totals], [[2, 1]]);
+  });
+
+  it('記録がなければ今月だけ', () => {
+    assert.deepEqual(usageByPeriod([], 1, now).map(formatUsagePeriodWithYear), ['2026/11/1〜11/30']);
+  });
+
+  it('リセット日で区切り、年をまたぐ期間は終わりにも年を付ける', () => {
+    const periods = usageByPeriod([tx(1, 'use', -1, at(2026, 1, 10)), tx(1, 'use', -1, at(2025, 12, 20))], 15, new Date(2026, 0, 20));
+    assert.deepEqual(periods.map(formatUsagePeriodWithYear), ['2026/1/15〜2/14', '2025/12/15〜2026/1/14']);
+    assert.deepEqual([...periods[1].totals], [[1, 2]]);
   });
 });

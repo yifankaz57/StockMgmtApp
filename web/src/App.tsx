@@ -10,6 +10,8 @@ import { ProductsPage } from '@/pages/ProductsPage'
 import { ScanPage } from '@/pages/ScanPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { navigate, useRoute, type Route } from '@/router'
+import { AdminPage } from '@/shared-master/AdminPage'
+import { useMyStatus, useSharedSession } from '@/shared-master/api'
 
 const TABS: { path: string; label: string; icon: IconName }[] = [
   { path: '/scan', label: 'スキャン', icon: 'barcode' },
@@ -28,6 +30,8 @@ function Screen({ route }: { route: Route }) {
       return <HistoryPage />
     case 'settings':
       return <SettingsPage />
+    case 'admin':
+      return <AdminPage />
     case 'product':
       if (second === 'new') return <ProductEditPage key={`new-${route.query.get('barcode') ?? ''}`} editingId={null} initialBarcode={route.query.get('barcode') ?? undefined} />
       if (Number.isInteger(id) && third === 'edit') return <ProductEditPage key={`edit-${id}`} editingId={id} />
@@ -44,7 +48,11 @@ function Screen({ route }: { route: Route }) {
 
 export default function App() {
   const route = useRoute()
-  const tab = TABS.find((t) => route.path === t.path)
+  // 運営者としてログインしたときだけ「管理」タブを出す
+  const { session } = useSharedSession()
+  const { status } = useMyStatus(session)
+  const tabs = status?.is_admin ? [...TABS, { path: '/admin', label: '管理', icon: 'shield' as IconName }] : TABS
+  const tab = tabs.find((t) => route.path === t.path)
 
   // 旧「利用」タブ（スキャンに統合）の URL はスキャンへ
   useEffect(() => {
@@ -63,7 +71,7 @@ export default function App() {
       <Screen route={route} />
       {tab ? (
         <nav className="tabbar">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.path}
               type="button"

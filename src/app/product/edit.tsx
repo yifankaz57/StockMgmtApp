@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { BarcodeScanner } from '@/components/barcode-scanner';
@@ -12,6 +12,8 @@ import { ErrorText, FieldRow, Row, Section, styles as ui } from '@/components/ui
 import { Colors } from '@/constants/theme';
 import { createProduct, getProduct, updateProduct } from '@/db/database';
 import { haptics } from '@/lib/haptics';
+import { shareAfterSave } from '@/shared-master/api';
+import { SharedCandidates } from '@/shared-master/shared-candidates';
 import { errorMessage, formatYen, parsePrice, parseQuantity, PRICE_ERROR_MESSAGE } from '@/lib/inventory';
 
 /** 入力中の仕入れ値の確認表示（フッターの末尾に付ける） */
@@ -87,6 +89,12 @@ export default function ProductEditScreen() {
         await updateProduct(db, editingId, input);
       }
       haptics.success();
+      // 端末への保存が済んでから共有マスタへ提案する（失敗しても端末の保存はそのまま）
+      try {
+        await shareAfterSave(barcode, name, manufacturer);
+      } catch (e) {
+        Alert.alert('商品は保存しました', `共有マスタへの登録はできませんでした。\n${errorMessage(e)}`);
+      }
       router.back();
     } catch (e) {
       haptics.error();
@@ -131,6 +139,15 @@ export default function ProductEditScreen() {
             </Pressable>
           </Row>
         </Section>
+
+        <SharedCandidates
+          barcode={barcode}
+          currentName={name}
+          onSelect={(n, m) => {
+            setName(n);
+            if (m) setManufacturer(m);
+          }}
+        />
 
         <ProductSuggestions
           barcode={barcode}

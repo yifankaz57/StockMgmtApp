@@ -70,9 +70,6 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .row-note { min-height: 0; padding-top: 0; justify-content: flex-end; font-size: 13px; color: var(--text-2); }
 .row + .row.row-note { border-top: 0; }
 .row-note.bad { color: var(--danger); }
-.value-summary { margin: 0 16px 10px; padding: 10px 14px; border-radius: 12px; background: var(--card); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; font-size: 13px; color: var(--text-2); }
-.value-summary strong { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
-.value-summary small { flex-basis: 100%; font-size: 11px; }
 .row-value { flex: 1; text-align: right; color: var(--text-2); font-size: 16px; word-break: break-all; user-select: text; }
 .row input, .row textarea {
   flex: 1; min-width: 0; border: 0; outline: none; background: transparent; text-align: right; color: var(--text); padding: 4px 0;
@@ -194,6 +191,8 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .confirm .actions button { min-height: 72px; border-radius: 18px; font-size: 24px; font-weight: 800; cursor: pointer; }
 .confirm .yes { border: 0; background: #fff; color: var(--warning); }
 .confirm .no { border: 3px solid #fff; background: transparent; color: #fff; }
+.confirm.first { background: var(--tint); }
+.confirm.first .yes { color: var(--tint); }
 
 /* ---------- 在庫操作 ---------- */
 .hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 24px; }
@@ -257,3 +256,34 @@ input, textarea { font: inherit; font-size: 16px; } /* 16px 未満だと iOS が
 .avail-row { gap: 4px; padding-left: 4px; }
 .avail-row .avail-toggle { width: 44px; padding: 0; }
 .avail-row.unavailable .row-label { color: var(--danger); font-weight: 700; }
+
+/* ---------- 共有マスタ ---------- */
+.suggest.shared { background: #eef4ec; }
+.suggest.shared .head { color: var(--success); display: flex; align-items: center; gap: 4px; }
+.suggest .status.err { color: var(--danger); gap: 8px; }
+.shared-list { display: flex; flex-direction: column; gap: 6px; }
+.shared-item { display: flex; align-items: center; gap: 6px; background: var(--card); border-radius: 10px; padding: 2px 4px 2px 0; border: 0.5px solid var(--border); }
+.shared-item.active { border-color: var(--success); box-shadow: inset 0 0 0 1px var(--success); }
+.shared-pick { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; background: none; padding: 8px 10px; text-align: left; cursor: pointer; }
+.shared-name { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+.shared-meta { font-size: 12px; color: var(--text-2); }
+.tag-confirmed { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--success); color: #fff; font-size: 11px; font-weight: 700; }
+.report-btn { color: var(--text-2); padding: 8px; }
+.report-btn svg { width: 18px; height: 18px; }
+.switch { width: 22px; height: 22px; accent-color: var(--tint); }
+.link-row { border: 0; width: 100%; background: none; cursor: pointer; text-align: left; }
+.row.link-row + .row, .row + .row.link-row { border-top: 0.5px solid var(--border); }
+
+/* ---------- 管理画面 ---------- */
+.admin-item { align-items: flex-start; flex-wrap: wrap; }
+.admin-item.dim .admin-main { opacity: 0.55; }
+.admin-main { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 15px; }
+.admin-reasons { font-size: 12px; color: var(--danger); }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.mini-btn { border: 0; border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 700; background: var(--fill); color: var(--text); cursor: pointer; }
+.mini-btn.ok { background: var(--success); color: #fff; }
+.mini-btn.danger { background: var(--danger-light); color: var(--danger); }
+.tag-kind { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: 6px; font-size: 11px; font-weight: 700; background: var(--fill); color: var(--text-2); vertical-align: 2px; }
+.tag-kind.report, .tag-kind.hidden { background: var(--danger-light); color: var(--danger); }
+.tag-kind.pending { background: var(--warning-light); color: var(--warning); }
+.tag-kind.approved { background: #e6f4ea; color: var(--success); }

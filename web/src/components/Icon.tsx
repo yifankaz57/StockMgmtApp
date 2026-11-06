@@ -29,6 +29,9 @@ const PATHS = {
   offline: 'M3 3l18 18M8.5 8.6A5 5 0 0 0 6 13H5a3 3 0 0 0 0 6h12M11 5.2A6 6 0 0 1 18 11a4 4 0 0 1 2.9 6.3',
   settings: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
   ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.7 5.7l12.6 12.6',
+  users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.7',
+  flag: 'M5 21V4M5 4h12l-2.5 4L17 12H5',
+  shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4',
 } as const
 
 export type IconName = keyof typeof PATHS

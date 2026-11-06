@@ -3,18 +3,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { productsToCsv } from '@shared/csv'
 import {
   errorMessage,
-  formatYen,
   isLowStock,
   formatUsagePeriod,
   sortByUsage,
-  usagePeriod,
-  totalStockValue,
+  type PeriodUsage,
   type Product,
 } from '@shared/inventory'
 import { Icon } from '@/components/Icon'
 import { ProductRow } from '@/components/rows'
 import { EmptyState, IconButton, Page, Segmented } from '@/components/ui'
-import { getUsageResetDay, listProducts, setProductAvailable, usageTotals } from '@/db/database'
+import { getUsageResetDay, listProducts, setProductAvailable, usageByAllPeriods } from '@/db/database'
 import { useDataVersion } from '@/db/events'
 import { shareCsv, timestampForFileName } from '@/lib/share'
 import { navigate } from '@/router'
@@ -44,7 +42,8 @@ export function ProductsPage() {
   const [lowOnly, setLowOnly] = useState(false)
   const [sort, setSort] = useState<SortKey>(loadSort)
   // 消費量順のとき: 集計期間（設定タブのリセット日から計算）と商品ごとの消費量
-  const [usage, setUsage] = useState<{ totals: Map<number, number>; periodLabel: string; resetDay: number } | null>(null)
+  // periods: 月ごとの消費量（新しい順。先頭が今期）。並べ替えには今期、CSV には全期間を使う
+  const [usage, setUsage] = useState<{ totals: Map<number, number>; periodLabel: string; resetDay: number; periods: PeriodUsage[] } | null>(null)
 
   useEffect(() => {
     try {
@@ -54,19 +53,20 @@ export function ProductsPage() {
     }
   }, [sort])
 
+  // 今期の消費量は、並べ替えと CSV 出力の両方で使うので常に読み込んでおく
+  // （CSV 出力のタップ時に読み込むと、iPhone で共有シートが開かないことがあるため）
   useEffect(() => {
-    if (sort !== 'usage') return
-    let active = true
+    const request = { active: true }
     void (async () => {
       const resetDay = await getUsageResetDay()
-      const period = usagePeriod(resetDay)
-      const totals = await usageTotals(period.start.toISOString())
-      if (active) setUsage({ totals, periodLabel: formatUsagePeriod(period), resetDay })
+      const periods = await usageByAllPeriods(resetDay)
+      const current = periods[0]
+      if (request.active) setUsage({ totals: current.totals, periodLabel: formatUsagePeriod(current), resetDay, periods })
     })().catch((e) => alert(`読み込みエラー: ${errorMessage(e)}`))
     return () => {
-      active = false
+      request.active = false
     }
-  }, [sort, version])
+  }, [version])
 
   useEffect(() => {
     listProducts()
@@ -74,7 +74,6 @@ export function ProductsPage() {
       .catch((e) => alert(`読み込みエラー: ${errorMessage(e)}`))
   }, [version])
 
-  const valueSummary = useMemo(() => totalStockValue(products), [products])
   const lowCount = useMemo(() => products.filter(isLowStock).length, [products])
   const sortingByUsage = sort === 'usage' && usage !== null
   const filtered = useMemo(() => {
@@ -103,7 +102,7 @@ export function ProductsPage() {
       return
     }
     const ts = timestampForFileName()
-    void shareCsv(`在庫一覧_${ts}.csv`, productsToCsv(products), `zaiko_${ts}.csv`).catch((e) =>
+    void shareCsv(`在庫一覧_${ts}.csv`, productsToCsv(products, usage?.periods ?? []), `zaiko_${ts}.csv`).catch((e) =>
       alert(`CSV出力に失敗しました: ${errorMessage(e)}`),
     )
   }
@@ -145,13 +144,6 @@ export function ProductsPage() {
         </button>
         <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{filtered.length} 件</span>
       </div>
-      {products.length > 0 && valueSummary.unpricedCount < products.length ? (
-        <div className="value-summary">
-          <span>在庫金額（仕入れ値ベース）</span>
-          <strong>{formatYen(valueSummary.total)}</strong>
-          {valueSummary.unpricedCount > 0 ? <small>仕入れ値が未登録の {valueSummary.unpricedCount} 件は含みません</small> : null}
-        </div>
-      ) : null}
       {filtered.length > 0 ? (
         <div className="list">
           {filtered.map((p) => (
