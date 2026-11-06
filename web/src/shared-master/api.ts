@@ -3,12 +3,14 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 import { isInStoreCode } from '@shared/inventory'
 import { isValidJan } from '@shared/jan'
+import { normalizeSupabaseUrl } from '@shared/supabase-url'
 
 // 共有マスタ（Supabase）との通信。
 // ビルド時に VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY を設定したときだけ有効になる（未設定なら画面にも出ない）。
 // anon key は公開して良い鍵。データの保護はデータベース側の権限（supabase/migrations）で行う。
 
-const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim()
+// 「…supabase.co/rest/v1/」のように余分なパスが付いていても、ホストだけにして使う
+const SUPABASE_URL = normalizeSupabaseUrl(String(import.meta.env.VITE_SUPABASE_URL ?? ''))
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim()
 
 export const sharedMasterEnabled = SUPABASE_URL !== '' && SUPABASE_ANON_KEY !== ''

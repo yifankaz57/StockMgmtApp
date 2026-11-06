@@ -84,7 +84,8 @@ Supabase では **自前のメール送信（SMTP）を設定しないとメー�
 ### 3. アプリに接続先を設定する
 
 1. Supabase で次の2つを確認する
-   - **Project URL**（例: `https://xxxx.supabase.co`）: 「Project Settings」→「Data API」、または画面上部の「Connect」ボタン
+   - **Project URL**（例: `https://xxxx.supabase.co`）: 「Project Settings」→「Data API」、または画面上部の「Connect」ボタン。
+     末尾に `/rest/v1/` が付いて表示される場合は、その部分を除いた `https://xxxx.supabase.co` だけを使う
    - **公開して良い鍵**: 「Project Settings」→「API Keys」で、次のどちらか
      - 「Publishable key」（`sb_publishable_` で始まる。新しい画面。こちらを推奨）
      - 「Legacy API Keys」タブの「anon」「public」の鍵（`eyJ` で始まる）
